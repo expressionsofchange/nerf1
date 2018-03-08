@@ -8,6 +8,7 @@ def load_tests(loader, tests, ignore):
 
     # Some tests in the doctests style are too large to nicely fit into a docstring; better to keep them separate:
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_clef_serialization.txt"))
+    tests.addTests(doctest.DocFileSuite("doctests/s_expr_construct.txt"))
 
     return tests
 

@@ -30,15 +30,15 @@ class Note(object):
 
 
 class BecomeAtom(Note):
-    def __init__(self, unicode_):
-        pmts(unicode_, str)
-        self.unicode_ = unicode_
+    def __init__(self, atom):
+        pmts(atom, str)
+        self.atom = atom
 
     def __repr__(self):
-        return "(become-atom " + self.unicode_ + ")"
+        return "(become-atom " + self.atom + ")"
 
     def as_bytes(self):
-        utf8 = self.unicode_.encode('utf-8')
+        utf8 = self.atom.encode('utf-8')
         return bytes([BECOME_ATOM]) + to_vlq(len(utf8)) + utf8
 
     @staticmethod
@@ -49,15 +49,15 @@ class BecomeAtom(Note):
 
 
 class SetAtom(Note):
-    def __init__(self, unicode_):
-        pmts(unicode_, str)
-        self.unicode_ = unicode_
+    def __init__(self, atom):
+        pmts(atom, str)
+        self.atom = atom
 
     def __repr__(self):
-        return "(set-atom " + self.unicode_ + ")"
+        return "(set-atom " + self.atom + ")"
 
     def as_bytes(self):
-        utf8 = self.unicode_.encode('utf-8')
+        utf8 = self.atom.encode('utf-8')
         return bytes([SET_ATOM]) + to_vlq(len(utf8)) + utf8
 
     @staticmethod
@@ -80,18 +80,18 @@ class BecomeList(Note):
 
 
 class Insert(Note):
-    def __init__(self, index, note):
+    def __init__(self, index, child_note):
         pmts(index, int)
-        pmts(note, Note)
+        pmts(child_note, Note)
 
         self.index = index
-        self.note = note
+        self.child_note = child_note
 
     def __repr__(self):
-        return "(insert " + repr(self.index) + " " + repr(self.note) + ")"
+        return "(insert " + repr(self.index) + " " + repr(self.child_note) + ")"
 
     def as_bytes(self):
-        return bytes([INSERT]) + to_vlq(self.index) + self.note.as_bytes()
+        return bytes([INSERT]) + to_vlq(self.index) + self.child_note.as_bytes()
 
     @staticmethod
     def from_stream(byte_stream):
@@ -117,18 +117,18 @@ class Delete(Note):
 
 
 class Extend(Note):
-    def __init__(self, index, note):
+    def __init__(self, index, child_note):
         pmts(index, int)
-        pmts(note, Note)
+        pmts(child_note, Note)
 
         self.index = index
-        self.note = note
+        self.child_note = child_note
 
     def __repr__(self):
-        return "(extend " + repr(self.index) + " " + repr(self.note) + ")"
+        return "(extend " + repr(self.index) + " " + repr(self.child_note) + ")"
 
     def as_bytes(self):
-        return bytes([EXTEND]) + to_vlq(self.index) + self.note.as_bytes()
+        return bytes([EXTEND]) + to_vlq(self.index) + self.child_note.as_bytes()
 
     @staticmethod
     def from_stream(byte_stream):

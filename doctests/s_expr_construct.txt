@@ -1,0 +1,13 @@
+>>> from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord, Score
+>>> from dsn.s_expr.construct import play_note
+
+
+>>> c = Chord(Score([
+...             BecomeList(),
+...             Insert(0, BecomeAtom('hello')),
+...             Insert(1, BecomeAtom('there')),
+...             Delete(1),
+...             Extend(0, SetAtom('goodbye')), ]))
+
+>>> play_note(c, None)
+(goodbye)
