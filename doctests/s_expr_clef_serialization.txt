@@ -1,0 +1,33 @@
+>>> from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord, Score
+
+## Test __init__ and __repr__
+
+>>> BecomeAtom('hello')
+(become-atom hello)
+
+>>> SetAtom('hello')
+(set-atom hello)
+
+>>> BecomeList()
+(become-list)
+
+>>> Insert(4, BecomeAtom('hello'))
+(insert 4 (become-atom hello))
+
+>>> Delete(3)
+(delete 3)
+
+>>> Extend(4, BecomeAtom('hello'))
+(extend 4 (become-atom hello))
+
+>>> Chord(Score([ BecomeAtom('hello'), SetAtom('goodbye'), ]))
+(chord ((become-atom hello) (set-atom goodbye)))
+
+## Test serialization/deserialization
+
+>>> c = Chord(Score([ BecomeAtom('hello'), SetAtom('goodbye'), BecomeList(), Insert(4, BecomeAtom('hello')), Delete(3), Extend(4, BecomeAtom('hello')), ]))
+>>> c
+(chord ((become-atom hello) (set-atom goodbye) (become-list) (insert 4 (become-atom hello)) (delete 3) (extend 4 (become-atom hello))))
+
+>>> Note.from_stream(iter(c.as_bytes()))
+(chord ((become-atom hello) (set-atom goodbye) (become-list) (insert 4 (become-atom hello)) (delete 3) (extend 4 (become-atom hello))))
