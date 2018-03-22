@@ -1,7 +1,8 @@
 # coding=utf-8
-
 from vlq import to_vlq, from_vlq
 from utils import pmts, rfs
+
+from dsn.s_expr.structure import Atom, List
 
 BECOME_ATOM = 0
 SET_ATOM = 1
@@ -28,6 +29,39 @@ class Note(object):
             CHORD: Chord,
         }[byte0].from_stream(byte_stream)
 
+    @staticmethod
+    def from_s_expression(s_expression):
+        """In the paper submitted to ELS'18 I presented a notation for notes in terms of an s-expression.
+        from_s_expression parses such expressions into the associated Python object representing the same note.
+        Note: the s_expression's history is completely ignored in this process."""
+
+        pmts(s_expression, List)
+        pmts(s_expression.children[0], Atom)
+        atom = s_expression.children[0].atom
+        d = {
+            "become-atom": BecomeAtom,
+            "set-atom": SetAtom,
+            "become-list": BecomeList,
+            "insert": Insert,
+            "delete": Delete,
+            "extend": Extend,
+            "chord": Chord,
+        }
+
+        if atom not in d:
+            raise Exception("Unknown note: %s" % s_expression.children[0].atom)
+
+        return d[atom].from_s_expression(s_expression)
+
+    def to_s_expression(self):
+        """In the paper submitted to ELS'18 I presented a notation for notes in terms of an s-expression.
+        to_s_expression serializes the Python note into such s_expressions.
+        N.B. An s_expression's without any history is created in this process. (Reasoning: we don't have a meaningful
+        history available to us, and we don't need one because these s-expressions are exclusively used for
+        representation (printing on screen); alternative solution: 'concoct' a history)"""
+
+        raise Exception("to_s_expression() cannot be called on the abstract baseclass")
+
 
 class BecomeAtom(Note):
     def __init__(self, atom):
@@ -46,6 +80,13 @@ class BecomeAtom(Note):
         length = from_vlq(byte_stream)
         utf8 = rfs(byte_stream, length)
         return BecomeAtom(str(utf8, 'utf-8'))
+
+    def to_s_expression(self):
+        return List([Atom("become-atom"), Atom(self.atom)])
+
+    @staticmethod
+    def from_s_expression(s_expression):
+        return BecomeAtom(s_expression.children[1].atom)
 
 
 class SetAtom(Note):
@@ -66,6 +107,13 @@ class SetAtom(Note):
         utf8 = rfs(byte_stream, length)
         return SetAtom(str(utf8, 'utf-8'))
 
+    def to_s_expression(self):
+        return List([Atom("set-atom"), Atom(self.atom)])
+
+    @staticmethod
+    def from_s_expression(s_expression):
+        return SetAtom(s_expression.children[1].atom)
+
 
 class BecomeList(Note):
     def __repr__(self):
@@ -76,6 +124,13 @@ class BecomeList(Note):
 
     @staticmethod
     def from_stream(byte_stream):
+        return BecomeList()
+
+    def to_s_expression(self):
+        return List([Atom("become-list")])
+
+    @staticmethod
+    def from_s_expression(s_expression):
         return BecomeList()
 
 
@@ -98,6 +153,13 @@ class Insert(Note):
         # N.B.: The TypeConstructor byte is not repeated here; it happens before we reach this point
         return Insert(from_vlq(byte_stream), Note.from_stream(byte_stream))
 
+    def to_s_expression(self):
+        return List([Atom("insert"), Atom(str(self.index)), self.child_note.to_s_expression()])
+
+    @staticmethod
+    def from_s_expression(s_expression):
+        return Insert(int(s_expression.children[1].atom), Note.from_s_expression(s_expression.children[2]))
+
 
 class Delete(Note):
     def __init__(self, index):
@@ -114,6 +176,13 @@ class Delete(Note):
     @staticmethod
     def from_stream(byte_stream):
         return Delete(from_vlq(byte_stream))
+
+    def to_s_expression(self):
+        return List([Atom("delete"), Atom(str(self.index))])
+
+    @staticmethod
+    def from_s_expression(s_expression):
+        return Delete(int(s_expression.children[1].atom))
 
 
 class Extend(Note):
@@ -134,6 +203,13 @@ class Extend(Note):
     def from_stream(byte_stream):
         return Extend(from_vlq(byte_stream), Note.from_stream(byte_stream))
 
+    def to_s_expression(self):
+        return List([Atom("extend"), Atom(str(self.index)), self.child_note.to_s_expression()])
+
+    @staticmethod
+    def from_s_expression(s_expression):
+        return Extend(int(s_expression.children[1].atom), Note.from_s_expression(s_expression.children[2]))
+
 
 class Chord(Note):
     def __init__(self, score):
@@ -148,6 +224,13 @@ class Chord(Note):
     @staticmethod
     def from_stream(byte_stream):
         return Chord(Score.from_stream(byte_stream))
+
+    def to_s_expression(self):
+        return List([Atom("chord"), List([c.to_s_expression() for c in self.score.notes])])
+
+    @staticmethod
+    def from_s_expression(s_expression):
+        return Chord(Score([Note.from_s_expression(child) for child in s_expression.children[1].children]))
 
 
 class Score(object):
