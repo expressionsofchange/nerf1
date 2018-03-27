@@ -1,6 +1,6 @@
 from spacetime import st_become, st_insert, st_replace, st_delete
 from utils import pmts
-from list_operations import l_become, l_insert, l_delete, l_replace  # WHY?
+from list_operations import l_become, l_insert, l_delete, l_replace
 
 from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord
 from dsn.s_expr.structure import SExpr, Atom, List
