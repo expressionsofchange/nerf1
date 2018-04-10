@@ -31,4 +31,5 @@ class Memoization(object):
 
     def __init__(self):
         self.construct = {}
+        self.construct_nerd = {}
         self.texture_for_text = {}

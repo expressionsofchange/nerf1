@@ -77,7 +77,7 @@ def play_note(note, structure):
 
 
 def play_score(m, score):
-    """Constructs a TreeNode by playing the full score."""
+    """Constructs an SExpr by playing the full score."""
     pmts(score, Score)
 
     tree = None  # In the beginning, there is nothing, which we model as `None`

@@ -1,0 +1,21 @@
+>>> from memoization import Memoization
+>>> from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord, Score
+>>> from dsn.s_expr.nerd import play_note, play_score
+
+
+>>> m = Memoization()
+>>> c = Chord(Score([
+...             BecomeList(),
+...             Insert(0, BecomeAtom('hello')),
+...             Insert(1, BecomeAtom('there')),
+...             Delete(1),
+...             Extend(0, SetAtom('goodbye')), ]))
+
+>>> play_note(c, None)
++(«None hello»goodbye «None»-there)
+
+>>> play_note(c, None).score
+((chord ((become-list) (insert 0 (become-atom hello)) (insert 1 (become-atom there)) (delete 1) (extend 0 (set-atom goodbye)))))
+
+>>> play_score(m, play_note(c, None).score)
++(«None hello»goodbye «None»-there)

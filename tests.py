@@ -3,6 +3,7 @@ import doctest
 
 import channel
 import spacetime
+import nerdspace
 import vlq
 import utils
 import s_address
@@ -16,6 +17,7 @@ def load_tests(loader, tests, ignore):
     tests.addTests(doctest.DocTestSuite(utils))
     tests.addTests(doctest.DocTestSuite(channel))
     tests.addTests(doctest.DocTestSuite(spacetime))
+    tests.addTests(doctest.DocTestSuite(nerdspace))
     tests.addTests(doctest.DocTestSuite(vlq))
     tests.addTests(doctest.DocTestSuite(s_address))
     tests.addTests(doctest.DocTestSuite(vim))
@@ -25,6 +27,7 @@ def load_tests(loader, tests, ignore):
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_clef_serialization.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_clef_to_s_expr.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_construct.txt"))
+    tests.addTests(doctest.DocFileSuite("doctests/s_expr_construct_nerd.txt"))
 
     return tests
 
