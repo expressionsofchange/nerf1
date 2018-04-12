@@ -28,6 +28,7 @@ def load_tests(loader, tests, ignore):
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_clef_to_s_expr.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_construct.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_construct_nerd.txt"))
+    tests.addTests(doctest.DocFileSuite("doctests/s_expr_in_context_display.txt"))
 
     return tests
 

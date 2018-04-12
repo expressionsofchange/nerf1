@@ -1,12 +1,12 @@
 """
+Intended usage: tools to "display notes in some structural context"; for this we need some mechanism to keep track of
+deletions and insertions from some point onwards.
+
 The pop-culture reference here is  N*E*R*D (No-one ever really dies); in this case meaning Nothing ever really
 disappears.
 
 This is a secondary structure-construct pair for the s-expr clef; I've grouped this different structure and construct in
 a single module.
-
-Intended usage: tools to "display notes in some structural context"; for this we need some mechanism to keep track of
-deletions and insertions from some point onwards.
 
 In the present version we deal with 2 problems at once:
 * Nerd, i.e. the ability to contain deleted information

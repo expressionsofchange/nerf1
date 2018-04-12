@@ -1,0 +1,122 @@
+>>> from memoization import Memoization
+>>> from dsn.s_expr.construct import play_note as play_note_regularly  # as oppossed to N*E*R*D, which is the focus here
+>>> from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord, Score
+>>> from dsn.s_expr.nerd import NerdSExpr, play_note, play_score
+>>> from dsn.s_expr.in_context_display import render_t0, render_most_completely
+
+
+>>> m = Memoization()
+
+
+First test: end-to-end using the same score we use in the other tests
+>>> c = Chord(Score([
+...             BecomeList(),
+...             Insert(0, BecomeAtom('hello')),
+...             Insert(1, BecomeAtom('there')),
+...             Delete(1),
+...             Extend(0, SetAtom('goodbye')), ]))
+
+>>> nerd_s_expr = play_note(c, None)
+
+>>> render_t0(nerd_s_expr)
+[+(+goodbye)]
+
+>>> render_most_completely(nerd_s_expr)
+[+(±hello +goodbye ±there)]
+
+
+## Testing of both rendering functions:
+
+Given some note (which is acquired using regular play; "copy" (or whatever that was called) TODO what-called
+    * an existing list, which contains an existing atom.
+
+>>> c = Chord(Score([
+...             BecomeList(),
+...             Insert(0, BecomeList()),
+...             Extend(0, Insert(0, BecomeAtom('existing'))),]))
+
+>>> initial_s_expr = play_note_regularly(c, None)
+>>> initial_s_expr
+((existing))
+>>> initial_nerd_s_expr = NerdSExpr.from_s_expr(initial_s_expr)
+
+### 1. delete something... should show everything recursively as deleted
+
+>>> n = Delete(0)
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> render_t0(nerd_s_expr)
+[(-(-existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[(-(-existing))]
+
+### 2. add something.... should just be shown as such.
+
+>>> n = Insert(0, BecomeList())
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> render_t0(nerd_s_expr)
+[(+() (existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[(+() (existing))]
+
+### 3. create new atom, update it: should show the last version as new for render_t0; 
+should show the penultimate (±) and final version (+) for render_most_completely
+
+>>> n = Insert(0, BecomeAtom('created'))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> n = Extend(0, SetAtom('updated'))
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+
+>>> render_t0(nerd_s_expr)
+[(+updated (existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[(±created +updated (existing))]
+
+
+### 4. update existing atom twice: should show;
+* for render_t0: the pre-existing situation as deleted; the final version as added
+* for render_most_completely: the same... but with the intermediate version as deleted & added
+
+>>> n = Extend(0, Extend(0, SetAtom('once')))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> n = Extend(0, Extend(0, SetAtom('twice')))
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+
+>>> render_t0(nerd_s_expr)
+[((-existing +twice))]
+
+>>> render_most_completely(nerd_s_expr)
+[((-existing ±once +twice))]
+
+### 5. insertion inside deletion:
+* for render_t0: don't show up
+* for render_most_completely: show up, as inserted & deleted
+
+>>> n = Extend(0, Insert(0, BecomeAtom('new-atom')))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> n = Extend(0, Insert(0, BecomeList()))
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+>>> n = Delete(0)
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+
+>>> render_t0(nerd_s_expr)
+[(-(-existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[(-(±() ±new-atom -existing))]
+
+
+### 6. deletion inside deletion: this should just show up as deleted, for both renderings
+
+>>> n = Extend(0, Delete(0))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> n = Delete(0)
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+
+>>> render_t0(nerd_s_expr)
+[(-(-existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[(-(-existing))]
