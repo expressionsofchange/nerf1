@@ -11,7 +11,7 @@ from dsn.s_expr.utils import (
     replace_text_at,
 )
 
-from dsn.s_expr.clef import Delete, Insert, Extend
+from dsn.s_expr.clef import Delete, Insert, Extend, Chord, Score
 
 from dsn.s_expr.structure import List
 
@@ -117,13 +117,15 @@ def edit_note_play(structure, edit_note):
         reinsert_later_node = node_for_s_address(structure.tree, structure.s_cursor)
 
         delete_note = Delete(delete_at_index)
-        score = [bubble_history_up(delete_note, structure.tree, parent_s_address)]
+
+        score = [delete_note]
 
         for i, note in enumerate(reinsert_later_node.score.notes()):
             type_ = Insert if i == 0 else Extend
             reinsertion = type_(index, note)
+            score.append(reinsertion)
 
-            score.append(bubble_history_up(reinsertion, structure.tree, parent_s_address))
+        score = [bubble_history_up(Chord(Score(score)), structure.tree, parent_s_address)]
 
         new_cursor = structure.s_cursor[:-1] + [index]
         return new_cursor, score, False
