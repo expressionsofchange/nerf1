@@ -38,6 +38,7 @@ from colorscheme import (
     GUARDSMAN_RED,
     GREY,
     WHITE,
+    BLACK,
 )
 
 from widgets.layout_constants import (
@@ -245,15 +246,14 @@ class HistoryWidget(FocusBehavior, Widget):
         self._invalidated = False
 
     def colors_for_properties(self, is_inserted, is_deleted, is_cursor):
-        base = {
-            (False, False): (GREY, WHITE),
-            (False, True):  (GUARDSMAN_RED, WHITE),
-            (True, False):  (LAUREL_GREEN, WHITE),
-            (True, True):   (CURIOUS_BLUE, WHITE),
+        c = BLACK if is_cursor else WHITE
+
+        return {
+            (False, False): (GREY, c),
+            (False, True):  (c, GUARDSMAN_RED),
+            (True, False):  (c, LAUREL_GREEN),
+            (True, True):   (c, CURIOUS_BLUE),
         }[is_inserted, is_deleted]
-        if is_cursor:
-            return base[1], base[0]
-        return base
 
     def _nts_for_items(self, items):
         result = []
