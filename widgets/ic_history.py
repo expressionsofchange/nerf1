@@ -8,16 +8,15 @@ from kivy.uix.behaviors.focus import FocusBehavior
 from kivy.uix.widget import Widget
 
 from dsn.history.construct import eh_note_play
-from dsn.history.structure import EHStructure
+from dsn.history.ic_structure import EICHStructure
 
 from dsn.s_expr.score import Score
-from dsn.s_expr.structure import Atom, List
 
 from dsn.history.clef import (
     EHCursorSet,
-    EHCursorChild,
-    EHCursorDFS,
-    EHCursorParent,
+    #     EHCursorChild,
+    #     EHCursorDFS,
+    #     EHCursorParent,
 )
 
 from widgets.utils import (
@@ -34,9 +33,13 @@ from widgets.utils import (
     Y,
 )
 from colorscheme import (
-    BLACK,
+    LAUREL_GREEN,
+    CURIOUS_BLUE,
+    GUARDSMAN_RED,
+    GREY,
     WHITE,
 )
+
 from widgets.layout_constants import (
     get_font_size,
     MARGIN,
@@ -54,6 +57,11 @@ from dsn.viewports.clef import (
     VIEWPORT_LINE_DOWN,
     VIEWPORT_LINE_UP,
 )
+
+from dsn.s_expr.construct import play_score as play_score_regularly  # as oppossed to N*E*R*D, which is the focus here
+from dsn.s_expr.nerd import NerdSExpr, play_note
+from dsn.s_expr.in_context_display import render_t0  # , render_most_completely
+from dsn.s_expr.in_context_display import ICAtom
 
 
 class HistoryWidget(FocusBehavior, Widget):
@@ -76,7 +84,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # AFAIU:
         # 1. We could basically set any value below.
 
-        self.ds = EHStructure(Score.empty(), List([]), [0])
+        self.ds = EICHStructure(Score.empty(), [], [0])
 
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
@@ -86,6 +94,26 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.bind(pos=self.invalidate)
         self.bind(size=self.invalidate)
+
+    def _items(self, score):
+        items = []
+        for s in reversed(list(score.scores())):
+            scores = s.scores()
+            next(scores)  # the note's own score
+            score_up_to_note = next(scores, None)
+
+            if score_up_to_note is None:
+                initial_nerd_s_expr = None
+            else:
+                state_before_note = play_score_regularly(self.m, score_up_to_note)
+                initial_nerd_s_expr = NerdSExpr.from_s_expr(state_before_note)
+
+            nerd_s_expr = play_note(s.last_note(), initial_nerd_s_expr)
+            renderings = render_t0(nerd_s_expr)
+
+            items.extend(renderings)
+
+        return items
 
     def parent_cursor_update(self, data):
         do_create = data
@@ -97,9 +125,10 @@ class HistoryWidget(FocusBehavior, Widget):
         self.send_to_channel, self.close_channel = self.data_channel.connect(self.receive_from_parent)
 
         # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor:
-        self.ds = EHStructure(
+
+        self.ds = EICHStructure(
             self.ds.score,
-            List([n.to_s_expression() for n in self.ds.score.notes()]),
+            self._items(self.ds.score),
             [0],
         )
 
@@ -117,9 +146,9 @@ class HistoryWidget(FocusBehavior, Widget):
         # cursor, making sure it is in-view including the recursive subparts).
         s_cursor = [len(score) - 1]
 
-        self.ds = EHStructure(
+        self.ds = EICHStructure(
             score,
-            List([n.to_s_expression() for n in score.notes()]),
+            self._items(score),
             s_cursor,
         )
 
@@ -133,9 +162,9 @@ class HistoryWidget(FocusBehavior, Widget):
     def _handle_eh_note(self, eh_note):
         new_s_cursor, error = eh_note_play(self.ds, eh_note)
 
-        self.ds = EHStructure(
+        self.ds = EICHStructure(
             self.ds.score,
-            List([n.to_s_expression() for n in self.ds.score.notes()]),
+            self._items(self.ds.score),
             new_s_cursor,
         )
 
@@ -170,18 +199,6 @@ class HistoryWidget(FocusBehavior, Widget):
         elif textual_code in ['z']:
             self.z_pressed = True
 
-        elif textual_code in ['left', 'h']:
-            self._handle_eh_note(EHCursorParent())
-
-        elif textual_code in ['right', 'l']:
-            self._handle_eh_note(EHCursorChild())
-
-        elif textual_code in ['up', 'k']:
-            self._handle_eh_note(EHCursorDFS(-1))
-
-        elif textual_code in ['down', 'j']:
-            self._handle_eh_note(EHCursorDFS(1))
-
         return True
 
     def invalidate(self, *args):
@@ -208,7 +225,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
 
     def _construct_box_structure(self):
-        offset_nonterminals = self._nts_for_score(self.ds.score)
+        offset_nonterminals = self._nts_for_items(self.ds.items)
         self.box_structure = annotate_boxes_with_s_addresses(BoxNonTerminal(offset_nonterminals, []), [])
 
     def refresh(self, *args):
@@ -227,17 +244,22 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self._invalidated = False
 
-    def colors_for_cursor(self, is_cursor):
+    def colors_for_properties(self, is_inserted, is_deleted, is_cursor):
+        base = {
+            (False, False): (GREY, WHITE),
+            (False, True):  (GUARDSMAN_RED, WHITE),
+            (True, False):  (LAUREL_GREEN, WHITE),
+            (True, True):   (CURIOUS_BLUE, WHITE),
+        }[is_inserted, is_deleted]
         if is_cursor:
-            return WHITE, BLACK
+            return base[1], base[0]
+        return base
 
-        return BLACK, WHITE
-
-    def _nts_for_score(self, score):
+    def _nts_for_items(self, items):
         result = []
         offset_y = 0
 
-        for i, node in enumerate(self.ds.node.children):
+        for i, node in enumerate(items):
             per_step_result = self._nt_for_node(node, i)
             result.append(OffsetBox((0, offset_y), per_step_result))
 
@@ -257,11 +279,11 @@ class HistoryWidget(FocusBehavior, Widget):
     def _nt_for_node_single_line(self, node, children_nts, s_address):
         is_cursor = s_address == self.ds.s_cursor
 
-        if isinstance(node, Atom):
+        if isinstance(node, ICAtom):
             return BoxNonTerminal([], [no_offset(
-                self._t_for_text(node.atom, self.colors_for_cursor(is_cursor)))])
+                self._t_for_text(node.atom, self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor)))])
 
-        t = self._t_for_text("(", self.colors_for_cursor(is_cursor))
+        t = self._t_for_text("(", self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor))
         offset_terminals = [
             no_offset(t),
         ]
@@ -274,7 +296,7 @@ class HistoryWidget(FocusBehavior, Widget):
             offset_nonterminals.append(OffsetBox((offset_right, offset_down), nt))
             offset_right += nt.outer_dimensions[X]
 
-        t = self._t_for_text(")", self.colors_for_cursor(is_cursor))
+        t = self._t_for_text(")", self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor))
         offset_terminals.append(OffsetBox((offset_right, offset_down), t))
 
         return BoxNonTerminal(offset_nonterminals, offset_terminals)
