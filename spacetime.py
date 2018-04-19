@@ -31,7 +31,7 @@ Delete the first item (s_address 0, t_address 0)
 
 def st_sanity(t2s, s2t):
     for (t, s) in enumerate(t2s):
-        assert s is None or (0 <= s <= len(t2s) - 1 and s2t[s] == t), "%s <X> %s" % (s2t, t2s)
+        assert s is None or (0 <= s <= len(s2t) - 1 and s2t[s] == t), "%s <X> %s" % (s2t, t2s)
 
     for (s, t) in enumerate(s2t):
         assert 0 <= t <= len(t2s) - 1 and t2s[t] == s, "%s <X> %s" % (s2t, t2s)
