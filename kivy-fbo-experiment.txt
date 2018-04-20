@@ -1,0 +1,45 @@
+Today (April 20th 2018) I tried a first experiment with Kivy's Fbo, but it wasn't very successful yet.
+
+As with any encounter with Kivy, things are severely underdocumented, and the thin layer over OpenGL doesn't really help, and mostly serves to obfuscate things. As usual the conclusion is: I should probably rip Kivy out, and replace it with something sane.
+
+In any case, my attempt ended here:
+
+(in ic_history.py)
+
+
+-                for instruction in t.instructions:
+-                    self.canvas.add(instruction)
++                # Outer-dimensions run down the screen, i.e. negative in Kivy's coordinate system; we do a *-1 here to
++                # ensure we have a positive-size canas;
++                positive_size = (t.outer_dimensions[0], t.outer_dimensions[1] * -1)
++
++                terminal_fbo = Fbo(size=positive_size)
++
++                # we apply an offset here to make sure we draw _on_ the canvas (start at top, draw down)
++                with apply_offset(terminal_fbo, (0, t.outer_dimensions[1] * -1)):
++                    for instruction in t.instructions:
++                        terminal_fbo.add(instruction)
++                terminal_fbo.draw()
++
++                self.canvas.add(Color(1, 1, 1, .5))
++                self.canvas.add(Rectangle(pos=(0, 0), size=positive_size, texture=terminal_fbo.texture))
+
+
+This was in the context of the idea of adding alpha-blending to the "drawing context", in a similar vein as we now do apply_offset.
+That's not how Color works though (any call to Color changes the color to that color, rather than be cumulative).
+I came up with the following idea: what if I draw on an Fbo first, and draw the Fbo's texture (possibly alpha-blended) on some other texture?
+
+This led to a more general idea: let's just use FBOs for any Terminal or NonTerminal: such items can then be cached at any level.
+
+The diff above is the result of that.
+It contains the following findings:
+
+* the necessary multiplicaton by -1 trickery.
+
+* the call to terminal_fbo.draw() is necessary to get any output at all (though I can't find it in any documentation)
+    I found the idea in the source
+    https://github.com/kivy/kivy/blob/ae3665c32e1fdb9b7564aa6bbceeb58b5cd09ec5/kivy/uix/widget.py#L641
+
+* Unfortunately, each call to .draw takes ~100ms ... since there are many such calls this is completely unworkable.
+    I tried to drill down where this goes wrong; but quickly abandoned that idea.
+
