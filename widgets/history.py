@@ -208,7 +208,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
 
     def _construct_box_structure(self):
-        offset_nonterminals = self._nts_for_score(self.ds.score)
+        offset_nonterminals = self._nts()
         self.box_structure = annotate_boxes_with_s_addresses(BoxNonTerminal(offset_nonterminals, []), [])
 
     def refresh(self, *args):
@@ -233,7 +233,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         return BLACK, WHITE
 
-    def _nts_for_score(self, score):
+    def _nts(self):
         result = []
         offset_y = 0
 
