@@ -86,7 +86,11 @@ class EditorGUI(App):
 
         self.vertical_layout.add_widget(horizontal_layout)
 
+        tree_data_channel, _, _ = tree._child_channel_for_t_address([])
+        tree_data_channel.connect(history_widget.receive_from_parent)
+
         tree.cursor_channel.connect(history_widget.parent_cursor_update)
+
         tree.focus = True
         return tree
 

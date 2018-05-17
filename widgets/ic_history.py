@@ -117,23 +117,14 @@ class HistoryWidget(FocusBehavior, Widget):
         return items
 
     def parent_cursor_update(self, data):
-        do_create = data
-
-        if self.data_channel is not None:
-            self.close_channel()
-
-        self.data_channel, do_kickoff = do_create()
-        self.send_to_channel, self.close_channel = self.data_channel.connect(self.receive_from_parent)
-
-        # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor:
-
-        self.ds = EICHStructure(
+        print("received t-address", data)
+        """
+        self.ds = EHStructure(
             self.ds.score,
-            self._items(self.ds.score),
-            [0],
+            List([n.to_s_expression() for n in self.ds.score.notes()]),
+            [0], # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor
         )
-
-        do_kickoff()
+        """
 
     def receive_from_parent(self, data):
         pmts(data, Score)

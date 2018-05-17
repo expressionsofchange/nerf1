@@ -244,36 +244,7 @@ class TreeWidget(FocusBehavior, Widget):
         self.invalidate()
 
     def broadcast_cursor_update(self, t_address):
-        """
-        The distinction between "somebody moved the cursor" and "the selected _data_ has changed" is relevant for other
-        windows that show something "under the cursor". This is the more so if such windows do not communicate all their
-        changes back to us directly (autosave=False).
-
-        The offered choices / information to the user on what to do with the not yet saved stuff may differ in those 2
-        cases.
-
-        We don't want to expose our address space (t addresses) to our children, but still want to allow for such a
-        distinction. Solution: we broadcast a mechanism `do_create` which may be used to create a data channel.
-        """
-
-        def do_create():
-            channel, send_to_child, close_child = self._child_channel_for_t_address(t_address)
-
-            def do_kickoff():
-                """After the child has connected its listeners to the channel, it wants to know the latest state."""
-                # the s_address is expected to exist (and correct): do_kickoff is assumed to be very quick after the
-                # cursor move... and you cannot move the cursor to a non-existent place.
-                # Regarding using do_kickoff() and do_create() with some time between them: YAGNI.
-                s_address = get_s_address_for_t_address(self.ds.tree, t_address)
-
-                assert s_address is not None
-
-                cursor_node = node_for_s_address(self.ds.tree, s_address)
-                send_to_child(cursor_node.score)
-
-            return channel, do_kickoff
-
-        self.cursor_channel.broadcast(do_create)
+        self.cursor_channel.broadcast(t_address)
 
     def _handle_edit_note(self, edit_note):
         new_s_cursor, not_quite_score, error = edit_note_play(self.ds, edit_note)
