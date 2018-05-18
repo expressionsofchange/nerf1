@@ -219,10 +219,15 @@ class TreeWidget(FocusBehavior, Widget):
 
         tree = play_score(self.m, data)
 
+        # refetching the s_cursor via t_cursor ensures the current cursor is unaffected by changes in other windows.
         s_cursor = best_s_address_for_t_address(tree, t_cursor)
-        pp_annotations = self.ds.pp_annotations[:]
 
-        self.ds = EditStructure(tree, s_cursor, pp_annotations, construct_pp_tree(tree, pp_annotations))
+        self.ds = EditStructure(
+            tree,
+            s_cursor,
+            self.ds.pp_annotations[:],
+            construct_pp_tree(tree, self.ds.pp_annotations)
+        )
 
         # TODO we only really need to broadcast the new t_cursor if it has changed (e.g. because the previously
         # selected t_cursor is no longer valid)
@@ -310,9 +315,9 @@ class TreeWidget(FocusBehavior, Widget):
         # TODO we only really need to broadcast the new t_cursor if it has changed.
         self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
 
+        self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
         self._update_viewport_for_change(user_moved_cursor=user_moved_cursor)
-
         self.invalidate()
 
         for notify_child in self.notify_children.values():
