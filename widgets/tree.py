@@ -287,7 +287,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         # Since that time this method has grown considerably, as has `receive_from_channel`, and both in very similar
         # ways. Furthermore: communication does no longer happen in terms of posacts.
-        # We could wonder whether we should not somehow find some common ground with `receive_close_from_child`
+        # We could wonder whether we should not somehow find some common ground with `receive_from_channel`
 
         new_tree = play_score(self.m, score)
 
