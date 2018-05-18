@@ -98,7 +98,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.ds = EHStructure(
             self.ds.score,
             List([n.to_s_expression() for n in local_score.notes()]),
-            [0],  # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor
+            [len(local_score) - 1],  # bound to a different cursor in the tree, we unconditionally reset our own cursor
             t_address,
         )
         self._construct_box_structure()

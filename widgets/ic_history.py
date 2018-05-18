@@ -121,10 +121,12 @@ class HistoryWidget(FocusBehavior, Widget):
 
     def parent_cursor_update(self, data):
         t_address = data
+        local_score = self._local_score(self.ds.score, t_address)
+
         self.ds = EICHStructure(
             self.ds.score,
-            self._items(self._local_score(self.ds.score, t_address)),
-            [0],  # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor
+            self._items(local_score),
+            [len(local_score) - 1],  # bound to a different cursor in the tree, we unconditionally reset our own cursor
             t_address,
         )
 
