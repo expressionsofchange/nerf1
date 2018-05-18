@@ -228,8 +228,7 @@ class TreeWidget(FocusBehavior, Widget):
         # selected t_cursor is no longer valid)
         self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
 
-        # See the note "SelectionContextChange does not affect the main structure" elsewhere.
-        self.selection_ds = selection_note_play(SelectionContextChange(self.ds), self.selection_ds)
+        self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
         self._update_viewport_for_change(user_moved_cursor=False)
         self.invalidate()
@@ -280,6 +279,15 @@ class TreeWidget(FocusBehavior, Widget):
         self._update_viewport_for_change(user_moved_cursor=True)
         self.invalidate()
 
+    def _update_selection_ds_for_main_ds(self):
+        # SelectionContextChange does not affect the main structure:
+        # In the general case, playing SelectionNotes may affect the main structure. (E.g. moving a selection affects
+        # the structure it's operating on). Playing the note SelectionContextChange, however, does by definition _not_
+        # affect the main structure: it represents precisely the case in which we notify the selection that the
+        # surrounding context has changed. `selection_note_play(SelectionContextChange...` is the only case of
+        # selection_note_play which needs not be followed by handling of state-changes to the wrapped main structure.
+        self.selection_ds = selection_note_play(SelectionContextChange(self.ds), self.selection_ds)
+
     def _update_internal_state_for_score(self, score, new_s_cursor, user_moved_cursor):
         # Refactoring notes: _update_internal_state_for_score does exactly that: it updates the internal state for
         # some score. It was factored out when we created the multi-window approach, and `receive_from_child`, since
@@ -297,15 +305,7 @@ class TreeWidget(FocusBehavior, Widget):
             self.ds.pp_annotations[:],
             construct_pp_tree(new_tree, self.ds.pp_annotations)
         )
-
-        # SelectionContextChange does not affect the main structure:
-        # In the general case, playing SelectionNotes may affect the main structure. (E.g. moving a selection affects
-        # the structure it's operating on). Playing the note SelectionContextChange, however, does by definition _not_
-        # affect the main structure: it represents precisely the case in which we notify the selection that the
-        # surrounding context has changed. `selection_note_play(SelectionContextChange...` is the only case of
-        # selection_note_play which needs not be followed by handling of state-changes to the wrapped main structure.
-
-        self.selection_ds = selection_note_play(SelectionContextChange(self.ds), self.selection_ds)
+        self._update_selection_ds_for_main_ds()
 
         # TODO we only really need to broadcast the new t_cursor if it has changed.
         self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
@@ -574,8 +574,7 @@ class TreeWidget(FocusBehavior, Widget):
             pp_tree,
         )
 
-        # See the note "SelectionContextChange does not affect the main structure" elsewhere.
-        self.selection_ds = selection_note_play(SelectionContextChange(self.ds), self.selection_ds)
+        self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
 
         # user_moved_cursor=False: [1] that's just factually not what happened; [2] this matches with the desirable
