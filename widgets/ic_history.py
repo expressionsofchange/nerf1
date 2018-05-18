@@ -12,6 +12,9 @@ from dsn.history.ic_structure import EICHStructure
 
 from dsn.s_expr.score import Score
 
+from spacetime import get_s_address_for_t_address
+from s_address import node_for_s_address
+
 from dsn.history.clef import (
     EHCursorSet,
     #     EHCursorChild,
@@ -85,7 +88,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # AFAIU:
         # 1. We could basically set any value below.
 
-        self.ds = EICHStructure(Score.empty(), [], [0])
+        self.ds = EICHStructure(Score.empty(), [], [0], [])
 
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
@@ -117,18 +120,36 @@ class HistoryWidget(FocusBehavior, Widget):
         return items
 
     def parent_cursor_update(self, data):
-        print("received t-address", data)
-        """
-        self.ds = EHStructure(
+        t_address = data
+        self.ds = EICHStructure(
             self.ds.score,
-            List([n.to_s_expression() for n in self.ds.score.notes()]),
-            [0], # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor
+            self._items(self._local_score(self.ds.score, t_address)),
+            [0],  # If we're bound to a different s_cursor in the parent tree, we unconditionally reset our own cursor
+            t_address,
         )
-        """
+
+        self._construct_box_structure()
+        # The desirable behavior is: follow the cursor; Hence: user_moved_cursor=True (even though the history-cursor
+        # moving is only a consequence of cursor move elsewhere)
+        self._update_viewport_for_change(user_moved_cursor=True)
+        self.invalidate()
 
     def receive_from_parent(self, data):
         pmts(data, Score)
         self.update_score(data)
+
+    def _local_score(self, score, tree_t_address):
+        tree = play_score_regularly(self.m, score)
+        s_address = get_s_address_for_t_address(tree, tree_t_address)
+
+        if s_address is None:
+            # because changes to the Score and the Cursor are not communicated to us in a transactional way, deletions
+            # in the tree will lead to a (temporarily) invalid cursor. We set our own score to the empty one in that
+            # case; the cursor_update that follows right after will restore the situation
+            return Score.empty()
+
+        cursor_node = node_for_s_address(tree, s_address)
+        return cursor_node.score
 
     def update_score(self, score):
         # For each "tree cursor" change, we reset our own cursor to the end (most recent item)
@@ -136,19 +157,24 @@ class HistoryWidget(FocusBehavior, Widget):
         # lowest possible position; this is something to be aware of because it might cause some confusion). At some
         # point this may be automatically solved, e.g. if we change the behavior of cursor-following to be "follow the
         # cursor, making sure it is in-view including the recursive subparts).
-        s_cursor = [len(score) - 1]
+
+        local_score = self._local_score(score, self.ds.tree_t_address)
+        s_cursor = [len(local_score) - 1]
 
         self.ds = EICHStructure(
             score,
-            self._items(score),
+            self._items(local_score),
             s_cursor,
+            self.ds.tree_t_address,
         )
 
         self._construct_box_structure()
 
-        # If nout_hash update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
-        # remains the same, the value of user_moved_cursor doesn't matter. Hence: user_moved_cursor=True
-        self._update_viewport_for_change(user_moved_cursor=True)
+        if len(local_score) > 0:  # guard against "no reasonable cursor, hence no reasonable viewport change"
+            # If nout_hash update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
+            # remains the same, the value of user_moved_cursor doesn't matter. Hence: user_moved_cursor=True
+            self._update_viewport_for_change(user_moved_cursor=True)
+
         self.invalidate()
 
     def _handle_eh_note(self, eh_note):

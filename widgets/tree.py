@@ -229,10 +229,6 @@ class TreeWidget(FocusBehavior, Widget):
             construct_pp_tree(tree, self.ds.pp_annotations)
         )
 
-        # TODO we only really need to broadcast the new t_cursor if it has changed (e.g. because the previously
-        # selected t_cursor is no longer valid)
-        self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
-
         self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
         self._update_viewport_for_change(user_moved_cursor=False)
@@ -240,6 +236,10 @@ class TreeWidget(FocusBehavior, Widget):
 
         for notify_child in self.notify_children.values():
             notify_child()  # (data)
+
+        # TODO we only really need to broadcast the new t_cursor if it has changed (e.g. because the previously
+        # selected t_cursor is no longer valid)
+        self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
 
     def channel_closed(self):
         self.closed = True
@@ -312,9 +312,6 @@ class TreeWidget(FocusBehavior, Widget):
         )
         self._update_selection_ds_for_main_ds()
 
-        # TODO we only really need to broadcast the new t_cursor if it has changed.
-        self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
-
         self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
         self._update_viewport_for_change(user_moved_cursor=user_moved_cursor)
@@ -322,6 +319,9 @@ class TreeWidget(FocusBehavior, Widget):
 
         for notify_child in self.notify_children.values():
             notify_child()  # (score)
+
+        # TODO we only really need to broadcast the new t_cursor if it has changed.
+        self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
 
     def keyboard_on_textinput(self, window, text):
         FocusBehavior.keyboard_on_textinput(self, window, text)
