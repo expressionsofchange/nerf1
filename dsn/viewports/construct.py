@@ -23,6 +23,22 @@ from dsn.viewports.utils import (
 )
 
 
+def get_bounded_vrtc(context, vrtc):
+    # use the cursor_position to calculate the viewport_position
+    unbounded_viewport_position = viewport_position_for_vrtc_and_cursor_position(
+        vrtc, context.cursor_position)
+
+    # use the viewport_position to do the bounding
+    bounded_viewport_position = bounded_viewport(
+        context.document_size,
+        context.viewport_size,
+        unbounded_viewport_position)
+
+    # back to a (now bounded) vrtc
+    return vrtc_for_viewport_position_and_cursor_position(
+        bounded_viewport_position, context.cursor_position)
+
+
 def play_viewport_note(note, structure):
     previous_viewport_position = structure.get_position()
 
@@ -48,16 +64,25 @@ def play_viewport_note(note, structure):
             # We then make sure that the cursor does not go out of bounds... if it does, we move the viewport after all.
             followed_vrtc = follow_cursor(note.context.viewport_size, note.context.cursor_size, shifted_vrtc)
 
+            # We bound the vrtc before storing it, to ensure there is no over- or underscrolling
+            bounded_vrtc = get_bounded_vrtc(note.context, followed_vrtc)
+
             return ViewportStructure(
                 context=note.context,
-                internal_mode=VRTC(followed_vrtc))
+                internal_mode=VRTC(bounded_vrtc))
 
         # If the user did not move the cursor, the viewport's internal mode remains unchanged, to express the idea
-        # "viewport relative to cursor remains constant" (viewport revolves around cursor); the viewport may actually
-        # shift in the document, but that calculation is not here (it's a getter of the ViewportStructure class)
+        # "viewport relative to cursor remains constant" (viewport revolves around cursor); the absolute position of the
+        # viewport may actually shift in the document, but that calculation is not here (it's a getter of the
+        # ViewportStructure class)
+
+        internal_mode = structure.internal_mode
+        if isinstance(internal_mode, VRTC):
+            internal_mode = VRTC(get_bounded_vrtc(note.context, internal_mode.viewport_offset))
+
         return ViewportStructure(
             context=note.context,
-            internal_mode=structure.internal_mode)  # i.e. unchanged
+            internal_mode=internal_mode)
 
     elif isinstance(note, MoveViewportRelativeToCursor):
         if note.relative_move == CURSOR_TO_BOTTOM:
@@ -79,16 +104,7 @@ def play_viewport_note(note, structure):
             raise Exception("Unknown type of relative move (programming error): %s" % note.relative_move)
 
         # We bound the vrtc before storing it, to ensure there is no over- or underscrolling
-        unbounded_viewport_position = viewport_position_for_vrtc_and_cursor_position(
-            vrtc, structure.context.cursor_position)
-
-        bounded_viewport_position = bounded_viewport(
-            structure.context.document_size,
-            structure.context.viewport_size,
-            unbounded_viewport_position)
-
-        bounded_vrtc = vrtc_for_viewport_position_and_cursor_position(
-            bounded_viewport_position, structure.context.cursor_position)
+        bounded_vrtc = get_bounded_vrtc(structure.context, vrtc)
 
         return ViewportStructure(
             context=structure.context,  # i.e. unchanged
