@@ -152,6 +152,7 @@ class HistoryWidget(FocusBehavior, Widget):
             self.ds.score,
             List([n.to_s_expression() for n in self.ds.score.notes()]),
             new_s_cursor,
+            self.ds.tree_t_address,
         )
 
         self._construct_box_structure()
