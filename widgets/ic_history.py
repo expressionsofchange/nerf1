@@ -176,10 +176,11 @@ class HistoryWidget(FocusBehavior, Widget):
 
     def _handle_eh_note(self, eh_note):
         new_s_cursor, error = eh_note_play(self.ds, eh_note)
+        local_score = self._local_score(self.ds.score, self.ds.tree_t_address)
 
         self.ds = EICHStructure(
             self.ds.score,
-            self._items(self.ds.score),
+            self._items(local_score),
             new_s_cursor,
             self.ds.tree_t_address,
         )
