@@ -244,7 +244,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
 
     def _construct_target_box_structure(self):
-        offset_nonterminals = self._nts()
+        offset_nonterminals = self._nts(self.ds.node)
         root_nt = BoxNonTerminal(offset_nonterminals, [])
 
         self.target_box_structure = annotate_boxes_with_s_addresses(root_nt, [])
@@ -281,11 +281,11 @@ class HistoryWidget(FocusBehavior, Widget):
 
         return BLACK, None
 
-    def _nts(self):
+    def _nts(self, s_expr_node):
         result = []
         offset_y = 0
 
-        for i, node in enumerate(self.ds.node.children):
+        for i, node in enumerate(s_expr_node.children):
             per_step_result = self._nt_for_node(node, i)
             result.append(OffsetBox((0, offset_y), per_step_result))
 
