@@ -61,6 +61,7 @@ from dsn.viewports.clef import (
     CURSOR_TO_BOTTOM,
     CURSOR_TO_CENTER,
     CURSOR_TO_TOP,
+    HERE,
     VIEWPORT_LINE_DOWN,
     VIEWPORT_LINE_UP,
 )
@@ -114,9 +115,9 @@ class HistoryWidget(FocusBehavior, Widget):
             t_address,
         )
         self._construct_target_box_structure()
-        # The desirable behavior is: follow the cursor; Hence: user_moved_cursor=True (even though the history-cursor
+        # The desirable behavior is: follow the cursor; Hence: change_source=HERE (even though the history-cursor
         # moving is only a consequence of cursor move elsewhere)
-        self._update_viewport_for_change(user_moved_cursor=True)
+        self._update_viewport_for_change(change_source=HERE)
         self.invalidate()
 
     def receive_from_parent(self, data):
@@ -155,8 +156,8 @@ class HistoryWidget(FocusBehavior, Widget):
 
         if len(local_score) > 0:  # guard against "no reasonable cursor, hence no reasonable viewport change"
             # If nout_hash update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
-            # remains the same, the value of user_moved_cursor doesn't matter. Hence: user_moved_cursor=True
-            self._update_viewport_for_change(user_moved_cursor=True)
+            # remains the same, the value of change_source doesn't matter. Hence: change_source=HERE
+            self._update_viewport_for_change(change_source=HERE)
 
         self.invalidate()
 
@@ -172,7 +173,7 @@ class HistoryWidget(FocusBehavior, Widget):
         )
 
         self._construct_target_box_structure()
-        self._update_viewport_for_change(user_moved_cursor=True)
+        self._update_viewport_for_change(change_source=HERE)
         self.invalidate()
 
     def keyboard_on_key_down(self, window, keycode, text, modifiers):
@@ -219,7 +220,7 @@ class HistoryWidget(FocusBehavior, Widget):
     def invalidate(self, *args):
         self._invalidated = True
 
-    def _update_viewport_for_change(self, user_moved_cursor):
+    def _update_viewport_for_change(self, change_source):
         # As it stands: _PURE_ copy-pasta from TreeWidget;
         cursor_position, cursor_size = cursor_dimensions(self.target_box_structure, self.ds.s_cursor)
 
@@ -233,7 +234,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         note = ViewportContextChange(
             context=context,
-            user_moved_cursor=user_moved_cursor,
+            change_source=change_source,
         )
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
 

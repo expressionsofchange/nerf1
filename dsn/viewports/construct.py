@@ -5,6 +5,7 @@ from dsn.viewports.clef import (
     CURSOR_TO_BOTTOM,
     CURSOR_TO_CENTER,
     CURSOR_TO_TOP,
+    HERE,
     VIEWPORT_LINE_UP,
     VIEWPORT_LINE_DOWN,
 )
@@ -52,11 +53,14 @@ def play_viewport_note(note, structure):
         previous_vrtc = structure.internal_mode.viewport_offset
 
     if isinstance(note, ViewportContextChange):
-        if note.user_moved_cursor:
-            # If the user moved the cursor, we switch to "cursor-related" mode, and make sure to keep the cursor in the
-            # viewport:
+        if note.change_source == HERE:
+            # We switch to "cursor-related" mode first, to facilitate any Viewport-repositioning that might be needed.
+            # NOTE: strictly speaking, such a switch might not actually be required; I imagine there are cases, namely
+            # those, in which no repositioning whatsoever is required, in which we might as well stay in
+            # ScrollToFraction mode if we already are. However, the present solution works fine for now so I'm not
+            # touching it.
 
-            # First, we shift the vrtc (the cursor has moved, but the viewport does not move)
+            # First, we shift the vrtc (the cursor has moved, but the viewport should not move)
             shifted_vrtc = vrtc_for_viewport_position_and_cursor_position(  # the new vrtc is deduced by taking...
                 previous_viewport_position,  # ... the unmoved viewport and ...
                 note.context.cursor_position)  # ... the new cursor position
@@ -71,11 +75,8 @@ def play_viewport_note(note, structure):
                 context=note.context,
                 internal_mode=VRTC(bounded_vrtc))
 
-        # If the user did not move the cursor, the viewport's internal mode remains unchanged, to express the idea
-        # "viewport relative to cursor remains constant" (viewport revolves around cursor); the absolute position of the
-        # viewport may actually shift in the document, but that calculation is not here (it's a getter of the
-        # ViewportStructure class)
-
+        # If the change_source is ELSEWHERE, the viewport's internal mode remains unchanged, to express the idea
+        # of respecting the last explicit viewport-change we did at our own window; (but respecting bounds)
         internal_mode = structure.internal_mode
         if isinstance(internal_mode, VRTC):
             internal_mode = VRTC(get_bounded_vrtc(note.context, internal_mode.viewport_offset))

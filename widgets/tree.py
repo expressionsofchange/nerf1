@@ -84,6 +84,8 @@ from dsn.viewports.clef import (
     CURSOR_TO_BOTTOM,
     CURSOR_TO_CENTER,
     CURSOR_TO_TOP,
+    ELSEWHERE,
+    HERE,
     VIEWPORT_LINE_DOWN,
     VIEWPORT_LINE_UP,
 )
@@ -231,7 +233,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
-        self._update_viewport_for_change(user_moved_cursor=False)
+        self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
         for notify_child in self.notify_children.values():
@@ -244,7 +246,7 @@ class TreeWidget(FocusBehavior, Widget):
     def channel_closed(self):
         self.closed = True
         self._construct_box_structure()
-        self._update_viewport_for_change(user_moved_cursor=False)
+        self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
     def broadcast_cursor_update(self, t_address):
@@ -271,17 +273,17 @@ class TreeWidget(FocusBehavior, Widget):
             self.send_to_channel(note)
             score = score.slur(note)
 
-        self._update_internal_state_for_score(score, new_s_cursor, user_moved_cursor=True)
+        self._update_internal_state_for_score(score, new_s_cursor, change_source=HERE)
 
     def _handle_selection_note(self, selection_note):
         self.selection_ds = selection_note_play(selection_note, self.selection_ds)
 
         # Selection changes may affect the main structure (i.e. if the selection changes the cursor_position). This
-        # information flows back into the main structure here (which is also why user_moved_cursor=True)
+        # information flows back into the main structure here (which is also why change_source=HERE)
         self.ds = self.selection_ds.context
         self._construct_box_structure()
 
-        self._update_viewport_for_change(user_moved_cursor=True)
+        self._update_viewport_for_change(change_source=HERE)
         self.invalidate()
 
     def _update_selection_ds_for_main_ds(self):
@@ -293,7 +295,7 @@ class TreeWidget(FocusBehavior, Widget):
         # selection_note_play which needs not be followed by handling of state-changes to the wrapped main structure.
         self.selection_ds = selection_note_play(SelectionContextChange(self.ds), self.selection_ds)
 
-    def _update_internal_state_for_score(self, score, new_s_cursor, user_moved_cursor):
+    def _update_internal_state_for_score(self, score, new_s_cursor, change_source):
         # Refactoring notes: _update_internal_state_for_score does exactly that: it updates the internal state for
         # some score. It was factored out when we created the multi-window approach, and `receive_from_child`, since
         # both children and edit notes communicated in terms of posacts in nerf0;
@@ -314,7 +316,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
-        self._update_viewport_for_change(user_moved_cursor=user_moved_cursor)
+        self._update_viewport_for_change(change_source=change_source)
         self.invalidate()
 
         for notify_child in self.notify_children.values():
@@ -403,7 +405,7 @@ class TreeWidget(FocusBehavior, Widget):
                 self.vim_ds = None
 
             self._construct_box_structure()
-            self._update_viewport_for_change(user_moved_cursor=True)
+            self._update_viewport_for_change(change_source=HERE)
             self.invalidate()
             return
 
@@ -582,9 +584,9 @@ class TreeWidget(FocusBehavior, Widget):
         self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
 
-        # user_moved_cursor=False: [1] that's just factually not what happened; [2] this matches with the desirable
-        # behavior: you want the cursor to stay in place, and revolve the layout-changes around it.
-        self._update_viewport_for_change(user_moved_cursor=False)
+        # change_source=ELSEWHERE: this matches with the desirable behavior: you want the cursor to stay in place, and
+        # revolve the layout-changes around it.
+        self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
     def _child_channel_for_t_address(self, t_address):
@@ -615,7 +617,7 @@ class TreeWidget(FocusBehavior, Widget):
             # is: this only works if the child channel faithfully communicates all notes in order.
             score = self.ds.tree.score.slur(note)
 
-            self._update_internal_state_for_score(score, self.ds.s_cursor, user_moved_cursor=False)
+            self._update_internal_state_for_score(score, self.ds.s_cursor, change_source=ELSEWHERE)
 
         def receive_close_from_child():
             del self.notify_children[channel_id]
@@ -672,7 +674,7 @@ class TreeWidget(FocusBehavior, Widget):
             Clock.schedule_once(self.refresh, -1)
             self._invalidated = True
 
-    def _update_viewport_for_change(self, user_moved_cursor):
+    def _update_viewport_for_change(self, change_source):
         cursor_position, cursor_size = cursor_dimensions(self.box_structure, self.ds.s_cursor)
 
         # In the below, all sizes and positions are brought into the positive integers; there is a mirroring `+` in the
@@ -685,12 +687,12 @@ class TreeWidget(FocusBehavior, Widget):
 
         note = ViewportContextChange(
             context=context,
-            user_moved_cursor=user_moved_cursor,
+            change_source=change_source,
         )
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
 
     def size_change(self, *args):
-        self._update_viewport_for_change(user_moved_cursor=False)
+        self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
     def _construct_box_structure(self):
