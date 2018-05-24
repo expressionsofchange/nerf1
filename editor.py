@@ -16,7 +16,7 @@ from filehandler import (
 )
 
 from widgets.tree import TreeWidget
-from widgets.ic_history import HistoryWidget
+from widgets.history import HistoryWidget
 
 from memoization import Memoization
 

@@ -14,10 +14,36 @@ OffsetBox = namedtuple('OffsetBox', ('offset', 'item'))
 
 
 def no_offset(item):
-    return OffsetBox((0, 0), item)
+    return OffsetBox(Offset(0, 0), item)
 
 
-BoxTerminal = namedtuple('BoxTerminal', ('instructions', 'outer_dimensions', ))
+class Offset(object):
+    def __init__(self, x, y, alpha=1):
+        self.x = x
+        self.y = y
+        self.alpha = alpha
+
+    def __getitem__(self, item):
+        # HACK for translation from tuple
+        if item == 0:
+            return self.x
+        if item == 1:
+            return self.y
+        raise KeyError("or something %s" % item)
+
+    def __iter__(self):
+        # HACK for translation from tuple
+        return iter([self.x, self.y])
+
+    def __repr__(self):
+        return repr((self.x, self.y, self.alpha))
+
+
+class BoxTerminal(object):
+    def __init__(self, instructions, outer_dimensions, address=None):
+        self.instructions = instructions
+        self.outer_dimensions = outer_dimensions
+        self.address = address
 
 
 class BoxNonTerminal(object):
@@ -74,7 +100,7 @@ def bring_into_offset(offset, point):
 @contextmanager
 def apply_offset(canvas, offset):
     canvas.add(PushMatrix())
-    canvas.add(Translate(*offset))
+    canvas.add(Translate(int(offset[X]), int(offset[Y])))
     yield
     canvas.add(PopMatrix())
 
@@ -148,3 +174,23 @@ def cursor_dimensions(annotated_box_structure, s_address, y_offset=0):
     child = annotated_box_structure.children[s_address[0]]
 
     return cursor_dimensions(child, s_address[1:], y_offset + o[Y])
+
+
+def flatten_nt_to_dict(nt, offset):
+    """Takes a BoxNonTerminal tree-structure with address-annotated BoxTerminals, flattens this to a dict of
+    BoxTerminals keyed by those addresses, and with the offsets corrected for the flattening."""
+
+    def add_offsets(o1, o2):
+        return Offset(o1[X] + o2[X], o1[Y] + o2[Y])
+
+    pmts(nt, BoxNonTerminal)
+    result = {}
+
+    for o, t in nt.offset_terminals:
+        result[t.address] = OffsetBox(add_offsets(o, offset), t)
+
+    for o, nt in nt.offset_nonterminals:
+        subresult = flatten_nt_to_dict(nt, add_offsets(o, offset))
+        result.update(subresult)
+
+    return result

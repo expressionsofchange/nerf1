@@ -8,10 +8,11 @@ class SExpr(object):
 
 class Atom(SExpr):
 
-    def __init__(self, atom, score=None):
+    def __init__(self, atom, score=None, address=None):
         pmts(atom, str)
         self.atom = atom
         self.score = score
+        self.address = address
 
     def __repr__(self):
         return pp_flat(self)
@@ -22,7 +23,7 @@ class Atom(SExpr):
 
 class List(SExpr):
 
-    def __init__(self, children, t2s=None, s2t=None, score=None):
+    def __init__(self, children, t2s=None, s2t=None, score=None, address=None):
         for i, child in enumerate(children):
             pmts(child, SExpr, "child: %s" % i)
 
@@ -30,6 +31,7 @@ class List(SExpr):
         self.t2s = t2s
         self.s2t = s2t
         self.score = score
+        self.address = address
 
     def __repr__(self):
         return pp_flat(self)

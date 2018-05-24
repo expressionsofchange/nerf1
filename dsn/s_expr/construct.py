@@ -7,7 +7,7 @@ from dsn.s_expr.structure import SExpr, Atom, List
 from dsn.s_expr.score import Score
 
 
-def play_note(note, structure):
+def play_note(note, structure, ScoreClass=Score):
     """
     Plays a single note.
     :: note, node => node
@@ -16,14 +16,14 @@ def play_note(note, structure):
     pmts(note, Note)
 
     if structure is None:
-        score = Score.empty().slur(note)
+        score = ScoreClass.empty().slur(note)
     else:
         pmts(structure, SExpr)
         score = structure.score.slur(note)
 
     if isinstance(note, Chord):
         for score_note in note.score.notes:
-            structure = play_note(score_note, structure)
+            structure = play_note(score_note, structure, ScoreClass=ScoreClass)
         return structure.restructure(score)
 
     if isinstance(note, BecomeAtom):
@@ -52,7 +52,7 @@ def play_note(note, structure):
         if not (0 <= note.index <= len(structure.children)):  # insert _at_ len(..) is ok (a.k.a. append)
             raise Exception("Out of bounds: %s" % note.index)
 
-        child = play_note(note.child_note, None)
+        child = play_note(note.child_note, None, ScoreClass=ScoreClass)
         children = l_insert(structure.children, note.index, child)
 
         t2s, s2t = st_insert(structure.t2s, structure.s2t, note.index)
@@ -67,7 +67,7 @@ def play_note(note, structure):
         return List(children, t2s, s2t, score)
 
     if isinstance(note, Extend):
-        child = play_note(note.child_note, structure.children[note.index])
+        child = play_note(note.child_note, structure.children[note.index], ScoreClass=ScoreClass)
         children = l_replace(structure.children, note.index, child)
 
         t2s, s2t = st_replace(structure.t2s, structure.s2t, note.index)
