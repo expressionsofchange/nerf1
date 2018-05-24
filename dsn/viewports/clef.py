@@ -33,12 +33,21 @@ class ViewportContextChange(ViewportNote):
         self.context = context
         self.change_source = change_source
 
+    def __repr__(self):
+        return "ViewportContextChange(%s, %s)" % (self.context, self.change_source)
+
 
 class MoveViewportRelativeToCursor(ViewportNote):
     def __init__(self, relative_move):
         self.relative_move = relative_move
 
+    def __repr__(self):
+        return "MoveViewportRelativeToCursor(%s)" % self.relative_move
+
 
 class ScrollToFraction(ViewportNote):
     def __init__(self, fraction):
         self.fraction = fraction
+
+    def __repr__(self):
+        return "ScrollToFraction(%s)" % self.fraction
