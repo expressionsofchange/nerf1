@@ -58,6 +58,7 @@ from dsn.viewports.clef import (
     CURSOR_TO_BOTTOM,
     CURSOR_TO_CENTER,
     CURSOR_TO_TOP,
+    ELSEWHERE,
     HERE,
     VIEWPORT_LINE_DOWN,
     VIEWPORT_LINE_UP,
@@ -98,7 +99,7 @@ class HistoryWidget(FocusBehavior, Widget):
         )
 
         self.bind(pos=self.invalidate)
-        self.bind(size=self.invalidate)
+        self.bind(size=self.size_change)
 
     def _items(self, score):
         items = []
@@ -218,6 +219,10 @@ class HistoryWidget(FocusBehavior, Widget):
             self.z_pressed = True
 
         return True
+
+    def size_change(self, *args):
+        self._update_viewport_for_change(change_source=ELSEWHERE)
+        self.invalidate()
 
     def invalidate(self, *args):
         if not self._invalidated:
