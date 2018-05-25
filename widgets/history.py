@@ -148,9 +148,10 @@ class HistoryWidget(FocusBehavior, Widget):
             t_address,
         )
         self._construct_target_box_structure()
-        # The desirable behavior is: follow the cursor; Hence: change_source=HERE (even though the history-cursor
-        # moving is only a consequence of cursor move elsewhere)
-        self._update_viewport_for_change(change_source=HERE)
+
+        # The desirable behavior is: keep the cursor still; Hence: change_source=ELSEWHERE (which matches with the fact
+        # that the history-cursor moving is a consequence of cursor move elsewhere)
+        self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
     def receive_from_parent(self, data):
@@ -185,9 +186,9 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self._construct_target_box_structure()
 
-        # If score update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
-        # remains the same, the value of change_source doesn't matter. Hence: change_source=HERE
-        self._update_viewport_for_change(change_source=HERE)
+        # The desirable behavior is: keep the cursor still; Hence: change_source=ELSEWHERE (which matches with the fact
+        # that the history-cursor moving is a consequence of cursor move elsewhere)
+        self._update_viewport_for_change(change_source=ELSEWHERE)
 
         self.invalidate()
 
