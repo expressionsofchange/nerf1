@@ -34,14 +34,18 @@ from widgets.utils import (
     OffsetBox,
     X,
     Y,
+    flatten_nt_to_dict,
 )
+
+from widgets.animate import animate, animate_scalar
+
 from colorscheme import (
     LAUREL_GREEN,
     CURIOUS_BLUE,
     GUARDSMAN_RED,
     GREY,
-    WHITE,
     BLACK,
+    WHITE,
 )
 
 from widgets.layout_constants import (
@@ -64,10 +68,21 @@ from dsn.viewports.clef import (
     VIEWPORT_LINE_UP,
 )
 
-from dsn.s_expr.construct import play_score as play_score_regularly  # as oppossed to N*E*R*D, which is the focus here
 from dsn.s_expr.nerd import NerdSExpr, play_note
 from dsn.s_expr.in_context_display import render_t0  # , render_most_completely
-from dsn.s_expr.in_context_display import ICAtom
+from dsn.s_expr.in_context_display import ICAtom, ICHAddress
+from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
+from dsn.s_expr.simple_score import SimpleScore
+
+ANIMATION_LENGTH = .5  # Seconds
+
+
+def _deepest(note):
+    """Finds the 'single leaf of the tree' (our notes have either 1 or 0 children); the exception being 'Chord',
+    but as it stands Chords are treated as a single (childless) note themselves and returned."""
+    if hasattr(note, 'child_note'):
+        return _deepest(note.child_note)  # i.e. for Insert & Extend
+    return note  # i.e. everything else, including Chord!
 
 
 class HistoryWidget(FocusBehavior, Widget):
@@ -97,25 +112,46 @@ class HistoryWidget(FocusBehavior, Widget):
             ViewportContext(0, 0, 0, 0),
             VRTC(0),
         )
+        self.present_viewport_position, target_viewport_position = 0, 0
 
+        self.present = {}
+        self.animation_time_remaining = 0
+
+        Clock.schedule_interval(self.tick, 1 / 60)
         self.bind(pos=self.invalidate)
         self.bind(size=self.size_change)
 
-    def _items(self, score):
+    def _best_new_cursor(self, prev_cursor, prev_items, new_items, default):
+        """Finds a best new cursor given a previous cursor"""
+        # Note: I find all this mapping between various address schemes rather ad hoc, but it works.
+
+        searchfor = prev_items[prev_cursor[0]].address.note_address
+        for i, item in enumerate(new_items):
+            if item.address.note_address == searchfor:
+                # We can actually do better, by mapping the selected structural element too... but I have some doubts as
+                # to whether it makes sense to include such elements in our cursor in the first place (as opposed to:
+                # only being able to select notes)
+                return [i]
+
+        return default
+
+    def _items(self, score, t_address):
         items = []
         for s in reversed(list(score.scores())):
-            scores = s.scores()
+            scores = iter(s.scores())
             next(scores)  # the note's own score
             score_up_to_note = next(scores, None)
 
             if score_up_to_note is None:
                 initial_nerd_s_expr = None
             else:
-                state_before_note = play_score_regularly(self.m, score_up_to_note)
+                state_before_note = play_simple_score(score_up_to_note)
                 initial_nerd_s_expr = NerdSExpr.from_s_expr(state_before_note)
 
+            prefix = ICHAddress(_deepest(s.last_note()).address, tuple(t_address))
+
             nerd_s_expr = play_note(s.last_note(), initial_nerd_s_expr)
-            renderings = render_t0(nerd_s_expr)
+            renderings = render_t0(nerd_s_expr, address=prefix)
 
             items.extend(renderings)
 
@@ -124,15 +160,16 @@ class HistoryWidget(FocusBehavior, Widget):
     def parent_cursor_update(self, data):
         t_address = data
         local_score = self._local_score(self.ds.score, t_address)
+        items = self._items(local_score, t_address)
 
         self.ds = EICHStructure(
             self.ds.score,
-            self._items(local_score),
-            [len(local_score) - 1],  # bound to a different cursor in the tree, we unconditionally reset our own cursor
+            items,
+            self._best_new_cursor(self.ds.s_cursor, self.ds.items, items, [len(local_score) - 1]),
             t_address,
         )
 
-        self._construct_box_structure()
+        self._construct_target_box_structure()
         # The desirable behavior is: keep the cursor still; Hence: change_source=ELSEWHERE (which matches with the fact
         # that the history-cursor moving is a consequence of cursor move elsewhere)
         self._update_viewport_for_change(change_source=ELSEWHERE)
@@ -143,31 +180,32 @@ class HistoryWidget(FocusBehavior, Widget):
         self.update_score(data)
 
     def _local_score(self, score, tree_t_address):
-        tree = play_score_regularly(self.m, score)
+        annotated_score = score_with_global_address(score)
+
+        tree = play_simple_score(annotated_score)
         s_address = get_s_address_for_t_address(tree, tree_t_address)
 
         if s_address is None:
             # because changes to the Score and the Cursor are not communicated to us in a transactional way, deletions
             # in the tree will lead to a (temporarily) invalid cursor. We set our own score to the empty one in that
             # case; the cursor_update that follows right after will restore the situation
-            return Score.empty()
+            return SimpleScore.empty()
 
         cursor_node = node_for_s_address(tree, s_address)
+
         return cursor_node.score
 
     def update_score(self, score):
-        # For each "tree cursor" change, we reset our own cursor to the end (most recent item)
         local_score = self._local_score(score, self.ds.tree_t_address)
-        s_cursor = [len(local_score) - 1]
 
         self.ds = EICHStructure(
             score,
-            self._items(local_score),
-            s_cursor,
+            self._items(local_score, self.ds.tree_t_address),
+            self.ds.s_cursor,
             self.ds.tree_t_address,
         )
 
-        self._construct_box_structure()
+        self._construct_target_box_structure()
 
         if len(local_score) > 0:  # guard against "no reasonable cursor, hence no reasonable viewport change"
             # The desirable behavior is: keep the cursor still; Hence: change_source=ELSEWHERE (which matches with the
@@ -182,12 +220,12 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.ds = EICHStructure(
             self.ds.score,
-            self._items(local_score),
+            self._items(local_score, self.ds.tree_t_address),
             new_s_cursor,
             self.ds.tree_t_address,
         )
 
-        self._construct_box_structure()
+        self._construct_target_box_structure()
         self._update_viewport_for_change(change_source=HERE)
         self.invalidate()
 
@@ -225,18 +263,16 @@ class HistoryWidget(FocusBehavior, Widget):
         self.invalidate()
 
     def invalidate(self, *args):
-        if not self._invalidated:
-            Clock.schedule_once(self.refresh, -1)
-            self._invalidated = True
+        self._invalidated = True
 
     def _update_viewport_for_change(self, change_source):
-        # As it stands: _PURE_ copy-pasta from TreeWidget;
-        cursor_position, cursor_size = cursor_dimensions(self.box_structure, self.ds.s_cursor)
+        # As it stands: copy-pasta from TreeWidget width changes
+        cursor_position, cursor_size = cursor_dimensions(self.target_box_structure, self.ds.s_cursor)
 
         # In the below, all sizes and positions are brought into the positive integers; there is a mirroring `+` in the
         # offset calculation when we actually apply the viewport.
         context = ViewportContext(
-            document_size=self.box_structure.underlying_node.outer_dimensions[Y] * -1,
+            document_size=self.target_box_structure.underlying_node.outer_dimensions[Y] * -1,
             viewport_size=self.size[Y],
             cursor_size=cursor_size * -1,
             cursor_position=cursor_position * -1)
@@ -246,24 +282,41 @@ class HistoryWidget(FocusBehavior, Widget):
             change_source=change_source,
         )
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
+        self.target_viewport_position = self.viewport_ds.get_position()
+        self.animation_time_remaining = ANIMATION_LENGTH
 
-    def _construct_box_structure(self):
+    def _construct_target_box_structure(self):
         offset_nonterminals = self._nts_for_items(self.ds.items)
-        self.box_structure = annotate_boxes_with_s_addresses(BoxNonTerminal(offset_nonterminals, []), [])
+        root_nt = BoxNonTerminal(offset_nonterminals, [])
 
-    def refresh(self, *args):
-        # As it stands: _PURE_ copy-pasta from TreeWidget;
-        """refresh means: redraw (I suppose we could rename, but I believe it's "canonical Kivy" to use 'refresh'"""
+        self.target_box_structure = annotate_boxes_with_s_addresses(root_nt, [])
+
+        self.target = flatten_nt_to_dict(root_nt, (0, 0))
+        self.animation_time_remaining = ANIMATION_LENGTH
+
+    def tick(self, dt):
+        if self.animation_time_remaining >= 0:
+            self.present = animate(dt / self.animation_time_remaining, self.present, self.target)
+            self.present_viewport_position = animate_scalar(
+                dt / self.animation_time_remaining, self.present_viewport_position, self.target_viewport_position)
+
+            self.animation_time_remaining = self.animation_time_remaining - dt
+            self._invalidated = True
+
+        if not self._invalidated:  # either b/c animation, or explicitly
+            return
+
+        # Actually draw
         self.canvas.clear()
 
-        self.offset = (self.pos[X], self.pos[Y] + self.size[Y] + self.viewport_ds.get_position())
+        self.offset = (self.pos[X], self.pos[Y] + self.size[Y] + self.present_viewport_position)
 
         with self.canvas:
             Color(1, 1, 1, 1)
             Rectangle(pos=self.pos, size=self.size,)
 
         with apply_offset(self.canvas, self.offset):
-            self._render_box(self.box_structure.underlying_node)
+            self._render_box(BoxNonTerminal([], list(self.present.values())))
 
         self._invalidated = False
 
@@ -303,9 +356,17 @@ class HistoryWidget(FocusBehavior, Widget):
 
         if isinstance(node, ICAtom):
             return BoxNonTerminal([], [no_offset(
-                self._t_for_text(node.atom, self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor)))])
+                self._t_for_text(
+                    node.atom,
+                    self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+                    node.address))])
 
-        t = self._t_for_text("(", self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor))
+        t = self._t_for_text(
+            "(",
+            self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+            node.address.with_render("open-paren")
+            )
+
         offset_terminals = [
             no_offset(t),
         ]
@@ -318,7 +379,11 @@ class HistoryWidget(FocusBehavior, Widget):
             offset_nonterminals.append(OffsetBox((offset_right, offset_down), nt))
             offset_right += nt.outer_dimensions[X]
 
-        t = self._t_for_text(")", self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor))
+        t = self._t_for_text(
+            ")",
+            self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+            node.address.with_render("close-paren")
+            )
         offset_terminals.append(OffsetBox((offset_right, offset_down), t))
 
         return BoxNonTerminal(offset_nonterminals, offset_terminals)
@@ -335,8 +400,8 @@ class HistoryWidget(FocusBehavior, Widget):
                 self._render_box(nt)
 
     # ## Section for drawing boxes
-    def _t_for_text(self, text, colors):
-        # Copy/pasta from tree.py
+    def _t_for_text(self, text, colors, address):
+        # Copy/pasta from tree.py (w/ addressing)
         fg, bg = colors
         text_texture = self._texture_for_text(text)
         content_height = text_texture.height
@@ -346,21 +411,30 @@ class HistoryWidget(FocusBehavior, Widget):
         bottom_left = (top_left[X], top_left[Y] - PADDING - MARGIN - content_height - MARGIN - PADDING)
         bottom_right = (bottom_left[X] + PADDING + MARGIN + content_width + MARGIN + PADDING, bottom_left[Y])
 
-        instructions = [
-            Color(*bg),
-            Rectangle(
-                pos=(bottom_left[0] + PADDING, bottom_left[1] + PADDING),
-                size=(content_width + 2 * MARGIN, content_height + 2 * MARGIN),
-                ),
-            Color(*fg),
-            Rectangle(
-                pos=(bottom_left[0] + PADDING + MARGIN, bottom_left[1] + PADDING + MARGIN),
-                size=text_texture.size,
-                texture=text_texture,
-                ),
-        ]
+        if bg is None:
+            instructions = []
+        else:
+            instructions = [
+                Color(*bg),
+                Rectangle(
+                    pos=(bottom_left[0] + PADDING, bottom_left[1] + PADDING),
+                    size=(content_width + 2 * MARGIN, content_height + 2 * MARGIN),
+                    ),
+            ]
 
-        return BoxTerminal(instructions, bottom_right)
+        if fg is None:
+            instructions += []
+        else:
+            instructions += [
+                Color(*fg),
+                Rectangle(
+                    pos=(bottom_left[0] + PADDING + MARGIN, bottom_left[1] + PADDING + MARGIN),
+                    size=text_texture.size,
+                    texture=text_texture,
+                    ),
+            ]
+
+        return BoxTerminal(instructions, bottom_right, address)
 
     def _texture_for_text(self, text):
         if text in self.m.texture_for_text:
@@ -398,7 +472,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.focus = True
 
-        clicked_item = from_point(self.box_structure, bring_into_offset(self.offset, (touch.x, touch.y)))
+        clicked_item = from_point(self.target_box_structure, bring_into_offset(self.offset, (touch.x, touch.y)))
 
         if clicked_item is not None:
             self._handle_eh_note(EHCursorSet(clicked_item.annotation))

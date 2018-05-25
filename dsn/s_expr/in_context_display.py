@@ -39,6 +39,35 @@ def plusminus(is_inserted, is_deleted):
     return ""
 
 
+class ICHAddress(object):
+    # TODO explain
+
+    def __init__(self, note_address=(), t_address=(), icd_specific="", render_specific=""):
+        self.note_address = note_address
+        self.t_address = t_address
+        self.icd_specific = icd_specific
+        self.render_specific = render_specific
+
+    def plus_t(self, t_index):
+        return ICHAddress(self.note_address, self.t_address + (t_index,))
+
+    def as_icd(self, icd_specific):
+        return ICHAddress(self.note_address, self.t_address, icd_specific)
+
+    def with_render(self, render_specific):
+        return ICHAddress(self.note_address, self.t_address, self.icd_specific, render_specific)
+
+    def __eq__(self, other):
+        return (isinstance(other, ICHAddress) and
+                self.note_address == other.note_address and
+                self.t_address == other.t_address and
+                self.icd_specific == other.icd_specific and
+                self.render_specific == other.render_specific)
+
+    def __hash__(self):
+        return hash((self.note_address, self.t_address, self.icd_specific, self.render_specific))
+
+
 class InContextDisplay(object):
 
     def __init__(self, *args):
@@ -47,11 +76,12 @@ class InContextDisplay(object):
 
 class ICAtom(InContextDisplay):
 
-    def __init__(self, atom, is_inserted, is_deleted):
+    def __init__(self, atom, is_inserted, is_deleted, address=None):
         pmts(atom, str)
         self.atom = atom
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
+        self.address = address
 
     def __repr__(self):
         return plusminus(self.is_inserted, self.is_deleted) + self.atom
@@ -59,23 +89,24 @@ class ICAtom(InContextDisplay):
 
 class ICList(InContextDisplay):
 
-    def __init__(self, children, is_inserted, is_deleted):
+    def __init__(self, children, is_inserted, is_deleted, address=None):
         pmts(children, list)
         self.children = children
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
+        self.address = address
 
     def __repr__(self):
         return plusminus(self.is_inserted, self.is_deleted) + "(" + " ".join(repr(c) for c in self.children) + ")"
 
 
-def render_t0(nerd_s_expr, context_is_deleted=False):
+def render_t0(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
     """ :: NerdSExpr => [InContextDisplay] """
     context_is_deleted = context_is_deleted or nerd_s_expr.is_deleted
 
     if isinstance(nerd_s_expr, NerdAtom):
         if len(nerd_s_expr.versions) == 0:  # A.K.A. "not is_inserted"
-            return [ICAtom(nerd_s_expr.atom, False, context_is_deleted)]
+            return [ICAtom(nerd_s_expr.atom, False, context_is_deleted, address)]
 
         # Implied else: is_inserted == True
         if context_is_deleted:
@@ -84,13 +115,17 @@ def render_t0(nerd_s_expr, context_is_deleted=False):
             if nerd_s_expr.versions[0] is None:
                 return []
 
-            return [ICAtom(nerd_s_expr.versions[0], False, True)]  # i.e. show the t=0 state as deleted.
+            return [ICAtom(nerd_s_expr.versions[0], False, True, address)]  # i.e. show the t=0 state as deleted.
 
         # Implied else: is_inserted == True, is_deleted == False:
         # show the t=0 state (if any) as deleted, t=n-1 as inserted
         if nerd_s_expr.versions[0] is None:
-            return [ICAtom(nerd_s_expr.atom, True, False)]
-        return [ICAtom(nerd_s_expr.versions[0], False, True)] + [ICAtom(nerd_s_expr.atom, True, False)]
+            return [ICAtom(nerd_s_expr.atom, True, False, address)]
+
+        return (
+            [ICAtom(nerd_s_expr.versions[0], False, True, address.as_icd('original'))] +
+            [ICAtom(nerd_s_expr.atom, True, False, address.as_icd('final-version'))]
+            )
 
     # implied else: NerdList
     if context_is_deleted and nerd_s_expr.is_inserted:
@@ -98,34 +133,34 @@ def render_t0(nerd_s_expr, context_is_deleted=False):
         return []
 
     children = []
-    for child in nerd_s_expr.children:
-        children.extend(render_t0(child, context_is_deleted))
+    for index, child in enumerate(nerd_s_expr.children):
+        children.extend(render_t0(child, context_is_deleted, address.plus_t(nerd_s_expr.n2t[index])))
 
-    return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted)]
+    return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted, address)]
 
 
-def render_most_completely(nerd_s_expr, context_is_deleted=False):
+def render_most_completely(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
     """ :: NerdSExpr => [InContextDisplay] """
     context_is_deleted = context_is_deleted or nerd_s_expr.is_deleted
 
     if isinstance(nerd_s_expr, NerdAtom):
         if len(nerd_s_expr.versions) == 0:  # A.K.A. "not is_inserted"
-            return [ICAtom(nerd_s_expr.atom, False, context_is_deleted)]
+            return [ICAtom(nerd_s_expr.atom, False, context_is_deleted, address)]
 
         # Implied else: is_inserted == True
 
         # In `render_most_completely` we show all insertions, both in and out of is_deleted contexts. For atoms, this
         # means we show all previous versions (except the none-ness of new beginnings) as both deleted and inserted.
         # We also show the "present state"
-        return [ICAtom(version, i > 0, True) for i, version in enumerate(nerd_s_expr.versions)
-                if version is not None] + [ICAtom(nerd_s_expr.atom, True, context_is_deleted)]
+        return [ICAtom(version, i > 0, True, address.plus_t(i)) for i, version in enumerate(nerd_s_expr.versions)
+                if version is not None] + [ICAtom(nerd_s_expr.atom, True, context_is_deleted, address.as_icd('last'))]
 
     # implied else: NerdList
 
     # In `render_most_completely` we show all insertions, both in and out of is_deleted contexts. For lists, this
     # simply means we don't filter insertions out when in context_is_deleted.
     children = []
-    for child in nerd_s_expr.children:
-        children.extend(render_most_completely(child, context_is_deleted))
+    for index, child in enumerate(nerd_s_expr.children):
+        children.extend(render_most_completely(child, context_is_deleted, address.plus_t(nerd_s_expr.n2t[index])))
 
-    return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted)]
+    return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted, address)]

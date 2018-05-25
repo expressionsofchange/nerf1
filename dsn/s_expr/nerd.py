@@ -50,7 +50,7 @@ class NerdSExpr(object):
 
 class NerdAtom(NerdSExpr):
 
-    def __init__(self, atom, versions, is_deleted, score=None):
+    def __init__(self, atom, versions, is_deleted, score=None, address=None):
         pmts(atom, str)
         pmts(versions, list)
         pmts(is_deleted, bool)
@@ -69,6 +69,7 @@ class NerdAtom(NerdSExpr):
         self.versions = versions
         self.is_deleted = is_deleted
         self.score = score
+        self.address = address
 
     @classmethod
     def from_s_expr(cls, s_expr):
@@ -76,7 +77,8 @@ class NerdAtom(NerdSExpr):
             s_expr.atom,
             [],
             False,
-            s_expr.score)
+            s_expr.score,
+            s_expr.address)
 
     def __repr__(self):
         return "«" + " ".join(str(v) for v in self.versions) + "»" + plusminus(False, self.is_deleted) + self.atom
@@ -90,7 +92,7 @@ class NerdAtom(NerdSExpr):
 
 class NerdList(NerdSExpr):
 
-    def __init__(self, children, n2s, s2n, is_inserted, is_deleted, score=None):
+    def __init__(self, children, n2s, s2n, n2t, max_t, is_inserted, is_deleted, score=None, address=None):
         # children are nerd-children, that is they have a type from the present module **and they need not actually be
         # alive**
 
@@ -98,11 +100,14 @@ class NerdList(NerdSExpr):
 
         self.n2s = n2s
         self.s2n = s2n
+        self.n2t = n2t
+        self.max_t = max_t
 
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
 
         self.score = score
+        self.address = address
 
     @classmethod
     def from_s_expr(cls, s_expr):
@@ -110,15 +115,20 @@ class NerdList(NerdSExpr):
             [NerdSExpr.from_s_expr(child) for child in s_expr.children],
             [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
             [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
+            s_expr.s2t,  # EXPLAIN
+            len(s_expr.t2s) - 1,  # EXPLAIN
             False,
             False,
-            s_expr.score)
+            s_expr.score,
+            s_expr.address)
 
     def deleted_version(self):
         return NerdList(
             self.children,
             self.n2s,
             self.s2n,
+            self.n2t,
+            self.max_t,
             self.is_inserted,
             True,
             # The deleted version has the same score as the non-deleted one: its deletion is external to it, i.e. it
@@ -134,6 +144,8 @@ class NerdList(NerdSExpr):
             self.children,
             self.n2s,
             self.s2n,
+            self.n2t,
+            self.max_t,
             self.is_inserted,
             self.is_deleted,
             score,
@@ -141,7 +153,7 @@ class NerdList(NerdSExpr):
 
 
 # ## Construction
-def play_note(note, structure):
+def play_note(note, structure, ScoreClass=Score):
     """
     Plays a single note.
     :: note, s_expr => s_expr
@@ -150,14 +162,14 @@ def play_note(note, structure):
     pmts(note, Note)
 
     if structure is None:
-        score = Score.empty().slur(note)
+        score = ScoreClass.empty().slur(note)
     else:
         pmts(structure, NerdSExpr)
         score = structure.score.slur(note)
 
     if isinstance(note, Chord):
         for score_note in note.score.notes:
-            structure = play_note(score_note, structure)
+            structure = play_note(score_note, structure, ScoreClass)
         return structure.restructure(score)
 
     if isinstance(note, BecomeAtom):
@@ -181,6 +193,8 @@ def play_note(note, structure):
             l_become(),
             n2s,
             s2n,
+            [],
+            -1,
             True,
             False,
             score)
@@ -192,9 +206,11 @@ def play_note(note, structure):
         if not (0 <= note.index <= len(structure.s2n)):  # insert _at_ len(..) is ok (a.k.a. append)
             raise Exception("Out of bounds: %s" % note.index)
 
-        child = play_note(note.child_note, None)
+        child = play_note(note.child_note, None, ScoreClass)
 
         n2s, s2n, index = sn_insert(structure.n2s, structure.s2n, note.index)
+        n2t = l_insert(structure.n2t, index, structure.max_t + 1)
+        max_t = structure.max_t + 1
 
         children = l_insert(structure.children, index, child)
 
@@ -202,6 +218,8 @@ def play_note(note, structure):
             children,
             n2s,
             s2n,
+            n2t,
+            max_t,
             structure.is_inserted,
             structure.is_deleted,
             score,
@@ -220,6 +238,8 @@ def play_note(note, structure):
             children,
             n2s,
             s2n,
+            structure.n2t,
+            structure.max_t,
             structure.is_inserted,
             structure.is_deleted,
             score)
@@ -227,13 +247,15 @@ def play_note(note, structure):
     if isinstance(note, Extend):
         n2s, s2n, index = sn_replace(structure.n2s, structure.s2n, note.index)
 
-        child = play_note(note.child_note, structure.children[index])
+        child = play_note(note.child_note, structure.children[index], ScoreClass)
         children = l_replace(structure.children, index, child)
 
         return NerdList(
             children,
             n2s,
             s2n,
+            structure.n2t,
+            structure.max_t,
             structure.is_inserted,
             structure.is_deleted,
             score)
