@@ -185,7 +185,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self._construct_target_box_structure()
 
-        # If nout_hash update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
+        # If score update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
         # remains the same, the value of change_source doesn't matter. Hence: change_source=HERE
         self._update_viewport_for_change(change_source=HERE)
 
