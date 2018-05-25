@@ -13,7 +13,7 @@ from dsn.history.structure import EHStructure
 from dsn.s_expr.score import Score
 # from dsn.s_expr.construct import play_score
 from dsn.s_expr.structure import Atom, List
-from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
+from dsn.s_expr.clef_address import play_simple_score, score_with_global_address, InScore
 from dsn.s_expr.simple_score import SimpleScore
 
 from spacetime import get_s_address_for_t_address
@@ -90,7 +90,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # AFAIU:
         # 1. We could basically set any value below.
 
-        self.ds = EHStructure(Score.empty(), List([]), [0], [])
+        self.ds = EHStructure(Score.empty(), List([], address=()), [0], [])
 
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
@@ -105,14 +105,46 @@ class HistoryWidget(FocusBehavior, Widget):
         self.bind(pos=self.invalidate)
         self.bind(size=self.size_change)
 
+    def _best_new_cursor(self, prev_s_cursor, prev_node, new_node, default):
+        """Finds a best new cursor given a previous cursor"""
+        # Note: I find all this mapping between various address schemes rather ad hoc, but it works.
+
+        def _best(s_expr_node, global_address, path_so_far):
+
+            if global_address == s_expr_node.address:
+                return path_so_far  # precise match, return
+
+            for i, child in enumerate(getattr(s_expr_node, 'children', [])):
+                if len(global_address) > len(s_expr_node.address):
+                    # A special case, to
+                    the_next = global_address[len(s_expr_node.address)]
+                    if isinstance(the_next, InScore) and child.address[-1] == 'list':
+                        return _best(child, global_address, path_so_far + [i])  # it's better
+
+                if child.address == global_address[:len(child.address)]:
+                    return _best(child, global_address, path_so_far + [i])  # it's better
+
+            return path_so_far  # no child is better; return yourself
+
+        prev_selected_node = node_for_s_address(prev_node, prev_s_cursor)
+        global_address = prev_selected_node.address
+
+        result = _best(new_node, global_address, [])
+        if result == []:
+            return default
+
+        return result
+
     def parent_cursor_update(self, data):
         t_address = data
 
         local_score = self._local_score(self.ds.score, t_address)
+        as_s_expr = List([n.to_s_expression() for n in local_score.notes()], address=())
+
         self.ds = EHStructure(
             self.ds.score,
-            List([n.to_s_expression() for n in local_score.notes()]),
-            [len(local_score) - 1],  # bound to a different cursor in the tree, we unconditionally reset our own cursor
+            as_s_expr,
+            self._best_new_cursor(self.ds.s_cursor, self.ds.node, as_s_expr, [len(local_score) - 1]),
             t_address,
         )
         self._construct_target_box_structure()
@@ -142,23 +174,20 @@ class HistoryWidget(FocusBehavior, Widget):
         return cursor_node.score
 
     def update_score(self, score):
-        # For each "tree cursor" change, we reset our own cursor to the end (most recent item)
         local_score = self._local_score(score, self.ds.tree_t_address)
-        s_cursor = [len(local_score) - 1]
 
         self.ds = EHStructure(
             score,
-            List([n.to_s_expression() for n in local_score.notes()]),
-            s_cursor,
+            List([n.to_s_expression() for n in local_score.notes()], address=()),
+            self.ds.s_cursor,
             self.ds.tree_t_address,
         )
 
         self._construct_target_box_structure()
 
-        if len(local_score) > 0:  # guard against "no reasonable cursor, hence no reasonable viewport change"
-            # If nout_hash update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
-            # remains the same, the value of change_source doesn't matter. Hence: change_source=HERE
-            self._update_viewport_for_change(change_source=HERE)
+        # If nout_hash update results in a cursor-reset, the desirable behavior is: follow the cursor; if the cursor
+        # remains the same, the value of change_source doesn't matter. Hence: change_source=HERE
+        self._update_viewport_for_change(change_source=HERE)
 
         self.invalidate()
 
@@ -168,7 +197,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.ds = EHStructure(
             self.ds.score,
-            List([n.to_s_expression() for n in local_score.notes()]),
+            List([n.to_s_expression() for n in local_score.notes()], address=()),
             new_s_cursor,
             self.ds.tree_t_address,
         )
