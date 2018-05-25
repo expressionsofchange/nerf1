@@ -40,7 +40,6 @@ from widgets.utils import (
 from widgets.animate import animate, animate_scalar
 
 from colorscheme import (
-    LAUREL_GREEN,
     CURIOUS_BLUE,
     GUARDSMAN_RED,
     GREY,
@@ -321,14 +320,16 @@ class HistoryWidget(FocusBehavior, Widget):
         self._invalidated = False
 
     def colors_for_properties(self, is_inserted, is_deleted, is_cursor):
-        c = BLACK if is_cursor else WHITE
-
-        return {
-            (False, False): (GREY, c),
-            (False, True):  (c, GUARDSMAN_RED),
-            (True, False):  (c, LAUREL_GREEN),
-            (True, True):   (c, CURIOUS_BLUE),
+        result = {
+            (False, False): (GREY, None),
+            (False, True):  (GUARDSMAN_RED, None),
+            (True, False):  (BLACK, None),
+            (True, True):   (CURIOUS_BLUE, None),
         }[is_inserted, is_deleted]
+
+        if is_cursor:
+            return WHITE, result[0]
+        return result
 
     def _nts_for_items(self, items):
         result = []
