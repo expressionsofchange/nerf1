@@ -31,9 +31,9 @@ class Note(object):
 
     @staticmethod
     def from_s_expression(s_expression):
-        """In the paper submitted to ELS'18 I presented a notation for notes in terms of an s-expression.
-        from_s_expression parses such expressions into the associated Python object representing the same note.
-        Note: the s_expression's history is completely ignored in this process."""
+        """In the paper "Clef Design, Thoughts on the Formalization of Program Construction" I presented a notation for
+        notes in terms of an s-expression.  from_s_expression parses such expressions into the associated Python object
+        representing the same note. Note: the s_expression's history is completely ignored in this process."""
 
         pmts(s_expression, List)
         pmts(s_expression.children[0], Atom)
@@ -54,8 +54,8 @@ class Note(object):
         return d[atom].from_s_expression(s_expression)
 
     def to_s_expression(self):
-        """In the paper submitted to ELS'18 I presented a notation for notes in terms of an s-expression.
-        to_s_expression serializes the Python note into such s_expressions.
+        """In the paper "Clef Design, Thoughts on the Formalization of Program Construction", I presented a notation for
+        notes in terms of an s-expression.  to_s_expression serializes the Python note into such s_expressions.
         N.B. An s_expression's without any history is created in this process. (Reasoning: we don't have a meaningful
         history available to us, and we don't need one because these s-expressions are exclusively used for
         representation (printing on screen); alternative solution: 'concoct' a history)"""
