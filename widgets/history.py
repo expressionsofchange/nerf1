@@ -41,7 +41,7 @@ from widgets.utils import (
     flatten_nt_to_dict,
 )
 
-from widgets.animate import animate
+from widgets.animate import animate, animate_scalar
 
 from colorscheme import (
     BLACK,
@@ -97,6 +97,7 @@ class HistoryWidget(FocusBehavior, Widget):
             ViewportContext(0, 0, 0, 0),
             VRTC(0),
         )
+        self.present_viewport_position, target_viewport_position = 0, 0
 
         self.present = {}
         self.animation_time_remaining = 0
@@ -256,7 +257,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self._invalidated = True
 
     def _update_viewport_for_change(self, change_source):
-        # As it stands: _PURE_ copy-pasta from TreeWidget;
+        # As it stands: copy-pasta from TreeWidget width changes
         cursor_position, cursor_size = cursor_dimensions(self.target_box_structure, self.ds.s_cursor)
 
         # In the below, all sizes and positions are brought into the positive integers; there is a mirroring `+` in the
@@ -273,6 +274,9 @@ class HistoryWidget(FocusBehavior, Widget):
         )
         self.viewport_ds = play_viewport_note(note, self.viewport_ds)
 
+        self.target_viewport_position = self.viewport_ds.get_position()
+        self.animation_time_remaining = ANIMATION_LENGTH
+
     def _construct_target_box_structure(self):
         offset_nonterminals = self._nts(self.ds.node)
         root_nt = BoxNonTerminal(offset_nonterminals, [])
@@ -284,7 +288,10 @@ class HistoryWidget(FocusBehavior, Widget):
 
     def tick(self, dt):
         if self.animation_time_remaining >= 0:
-            self.present = animate(self.present, self.target, dt / self.animation_time_remaining)
+            self.present = animate(dt / self.animation_time_remaining, self.present, self.target)
+            self.present_viewport_position = animate_scalar(
+                dt / self.animation_time_remaining, self.present_viewport_position, self.target_viewport_position)
+
             self.animation_time_remaining = self.animation_time_remaining - dt
             self._invalidated = True
 
@@ -294,7 +301,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # Actually draw
         self.canvas.clear()
 
-        self.offset = (self.pos[X], self.pos[Y] + self.size[Y] + self.viewport_ds.get_position())
+        self.offset = (self.pos[X], self.pos[Y] + self.size[Y] + self.present_viewport_position)
 
         with self.canvas:
             Color(1, 1, 1, 1)

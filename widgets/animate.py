@@ -6,11 +6,11 @@ from functools import partial
 FLOAT_LEFT = -400
 
 
-def r(fraction, a, b):
+def animate_scalar(fraction, a, b):
     return a + ((b - a) * fraction)
 
 
-def animate(present, target, fraction):
+def animate(fraction, present, target):
     """
     Takes 2 dictionaries:
     * keyed by some identifier. Which expresses: if the identifier is the same in the 2 dicts, it's the same thing.
@@ -28,7 +28,7 @@ def animate(present, target, fraction):
         return target
 
     result = {}
-    rr = partial(r, fraction)
+    rr = partial(animate_scalar, fraction)
 
     for key in set(list(present.keys()) + list(target.keys())):
         if key not in present:
