@@ -2,11 +2,11 @@ from utils import pmts
 
 
 class EICHStructure(object):
-    # Edit In-Context History Structure
+    """EICH means: Edit In-Context History"""
 
-    def __init__(self, score, items, s_cursor, tree_t_address):
+    def __init__(self, score, items, cursor, tree_t_address):
         pmts(items, list)
         self.score = score
         self.items = items
-        self.s_cursor = s_cursor
+        self.cursor = cursor
         self.tree_t_address = tree_t_address

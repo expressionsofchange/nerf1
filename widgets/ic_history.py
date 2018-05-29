@@ -7,7 +7,7 @@ from kivy.metrics import pt
 from kivy.uix.behaviors.focus import FocusBehavior
 from kivy.uix.widget import Widget
 
-from dsn.history.construct import eh_note_play
+from dsn.history.ic_construct import eich_note_play
 from dsn.history.ic_structure import EICHStructure
 
 from dsn.s_expr.score import Score
@@ -15,11 +15,8 @@ from dsn.s_expr.score import Score
 from spacetime import get_s_address_for_t_address
 from s_address import node_for_s_address
 
-from dsn.history.clef import (
-    EHCursorSet,
-    #     EHCursorChild,
-    #     EHCursorDFS,
-    #     EHCursorParent,
+from dsn.history.ic_clef import (
+    EICHCursorSet,
 )
 
 from widgets.utils import (
@@ -164,7 +161,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.ds = EICHStructure(
             self.ds.score,
             items,
-            self._best_new_cursor(self.ds.s_cursor, self.ds.items, items, [len(local_score) - 1]),
+            self._best_new_cursor(self.ds.cursor, self.ds.items, items, [len(local_score) - 1]),
             t_address,
         )
 
@@ -200,7 +197,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.ds = EICHStructure(
             score,
             self._items(local_score, self.ds.tree_t_address),
-            self.ds.s_cursor,
+            self.ds.cursor,
             self.ds.tree_t_address,
         )
 
@@ -213,14 +210,14 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.invalidate()
 
-    def _handle_eh_note(self, eh_note):
-        new_s_cursor, error = eh_note_play(self.ds, eh_note)
+    def _handle_eich_note(self, eich_note):
+        new_cursor, error = eich_note_play(self.ds, eich_note)
         local_score = self._local_score(self.ds.score, self.ds.tree_t_address)
 
         self.ds = EICHStructure(
             self.ds.score,
             self._items(local_score, self.ds.tree_t_address),
-            new_s_cursor,
+            new_cursor,
             self.ds.tree_t_address,
         )
 
@@ -266,7 +263,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
     def _update_viewport_for_change(self, change_source):
         # As it stands: copy-pasta from TreeWidget width changes
-        cursor_position, cursor_size = cursor_dimensions(self.target_box_structure, self.ds.s_cursor)
+        cursor_position, cursor_size = cursor_dimensions(self.target_box_structure, self.ds.cursor)
 
         # In the below, all sizes and positions are brought into the positive integers; there is a mirroring `+` in the
         # offset calculation when we actually apply the viewport.
@@ -353,7 +350,7 @@ class HistoryWidget(FocusBehavior, Widget):
         return f(node, children, s_address)
 
     def _nt_for_node_single_line(self, node, children_nts, s_address):
-        is_cursor = s_address == self.ds.s_cursor
+        is_cursor = s_address == self.ds.cursor
 
         if isinstance(node, ICAtom):
             return BoxNonTerminal([], [no_offset(
@@ -476,6 +473,6 @@ class HistoryWidget(FocusBehavior, Widget):
         clicked_item = from_point(self.target_box_structure, bring_into_offset(self.offset, (touch.x, touch.y)))
 
         if clicked_item is not None:
-            self._handle_eh_note(EHCursorSet(clicked_item.annotation))
+            self._handle_eich_note(EICHCursorSet(clicked_item.annotation))
 
         return True
