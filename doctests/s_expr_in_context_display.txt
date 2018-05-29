@@ -136,3 +136,41 @@ should show the penultimate (±) and final version (+) for render_most_completel
 
 >>> render_most_completely(nerd_s_expr)
 [(±new-atom (existing))]
+
+
+### 8. Atom-setting without changes:
+
+This test documents current behavior, rather than desired behavior. Once a desired
+behavior becomes known we should adapt these tests.
+
+I simply haven't made up my mind about the desired behavior here... so the present test
+is a starting point for that discussion.
+
+The simplest case: update-with-same
+Q: Should it even be legal to set an atom to the same atom?
+
+>>> n = Extend(0, Extend(0, SetAtom('existing')))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+
+Q: shouldn't this render like in [7] above then (since t[0] == t[n-1])?
+>>> render_t0(nerd_s_expr)
+[((-existing +existing))]
+
+Note: the fact that we don't show "±existing" here is aruably correct, since that would imply
+insertion followed by deletion (with no result in the end), but here we have a result in the end.
+>>> render_most_completely(nerd_s_expr)
+[((-existing +existing))]
+
+The more interesting case: update twice, returning to the same point.
+
+>>> n = Extend(0, Extend(0, SetAtom('updated')))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> n = Extend(0, Extend(0, SetAtom('existing')))
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+
+Q: shouldn't this render like in [7] above then (since t[0] == t[n-1])?
+>>> render_t0(nerd_s_expr)
+[((-existing +existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[((-existing ±updated +existing))]
