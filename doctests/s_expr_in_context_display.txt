@@ -120,3 +120,19 @@ should show the penultimate (±) and final version (+) for render_most_completel
 
 >>> render_most_completely(nerd_s_expr)
 [(-(-existing))]
+
+
+### 7. insertion followed by deletion:
+* for render_t0: show no changes, only structure (t[0] == t[n-1])
+* for render_most_completely: show up, as inserted & deleted
+
+>>> n = Insert(0, BecomeAtom('new-atom'))
+>>> nerd_s_expr = play_note(n, initial_nerd_s_expr)
+>>> n = Delete(0)
+>>> nerd_s_expr = play_note(n, nerd_s_expr)
+
+>>> render_t0(nerd_s_expr)
+[((existing))]
+
+>>> render_most_completely(nerd_s_expr)
+[(±new-atom (existing))]
