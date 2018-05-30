@@ -218,30 +218,12 @@ class TreeWidget(FocusBehavior, Widget):
         pmts(data, Score)
 
         t_cursor = t_address_for_s_address(self.ds.tree, self.ds.s_cursor)
-
-        tree = play_score(self.m, data)
+        new_tree = play_score(self.m, data)
 
         # refetching the s_cursor via t_cursor ensures the current cursor is unaffected by changes in other windows.
-        s_cursor = best_s_address_for_t_address(tree, t_cursor)
+        s_cursor = best_s_address_for_t_address(new_tree, t_cursor)
 
-        self.ds = EditStructure(
-            tree,
-            s_cursor,
-            self.ds.pp_annotations[:],
-            construct_pp_tree(tree, self.ds.pp_annotations)
-        )
-
-        self._update_selection_ds_for_main_ds()
-        self._construct_box_structure()
-        self._update_viewport_for_change(change_source=ELSEWHERE)
-        self.invalidate()
-
-        for notify_child in self.notify_children.values():
-            notify_child()  # (data)
-
-        # TODO we only really need to broadcast the new t_cursor if it has changed (e.g. because the previously
-        # selected t_cursor is no longer valid)
-        self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
+        self._update_internal_state_for_score(data, s_cursor, ELSEWHERE)
 
     def channel_closed(self):
         self.closed = True
@@ -296,14 +278,6 @@ class TreeWidget(FocusBehavior, Widget):
         self.selection_ds = selection_note_play(SelectionContextChange(self.ds), self.selection_ds)
 
     def _update_internal_state_for_score(self, score, new_s_cursor, change_source):
-        # Refactoring notes: _update_internal_state_for_score does exactly that: it updates the internal state for
-        # some score. It was factored out when we created the multi-window approach, and `receive_from_child`, since
-        # both children and edit notes communicated in terms of posacts in nerf0;
-
-        # Since that time this method has grown considerably, as has `receive_from_channel`, and both in very similar
-        # ways. Furthermore: communication does no longer happen in terms of posacts.
-        # We could wonder whether we should not somehow find some common ground with `receive_from_channel`
-
         new_tree = play_score(self.m, score)
 
         self.ds = EditStructure(
@@ -319,7 +293,7 @@ class TreeWidget(FocusBehavior, Widget):
         self.invalidate()
 
         for notify_child in self.notify_children.values():
-            notify_child()  # (score)
+            notify_child()
 
         # TODO we only really need to broadcast the new t_cursor if it has changed.
         self.broadcast_cursor_update(t_address_for_s_address(self.ds.tree, self.ds.s_cursor))
