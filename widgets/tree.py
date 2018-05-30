@@ -312,7 +312,6 @@ class TreeWidget(FocusBehavior, Widget):
             self.ds.pp_annotations[:],
             construct_pp_tree(new_tree, self.ds.pp_annotations)
         )
-        self._update_selection_ds_for_main_ds()
 
         self._update_selection_ds_for_main_ds()
         self._construct_box_structure()
