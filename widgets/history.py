@@ -323,21 +323,22 @@ class HistoryWidget(FocusBehavior, Widget):
         offset_y = 0
 
         for i, node in enumerate(s_expr_node.children):
-            per_step_result = self._nt_for_node(node, i)
+            per_step_result = self.bottom_up_construct(self._nt_for_node_single_line, node, [i])
+
             result.append(OffsetBox((0, offset_y), per_step_result))
 
             offset_y += per_step_result.outer_dimensions[Y]
 
         return result
 
-    def _nt_for_node(self, node, x):
-        # NOTE about how this was stolen in broad lines from the tree's rendering mechanism.
-        return self.bottom_up_construct(self._nt_for_node_single_line, node, [x])
+    def bottom_up_construct(self, alg, node, s_address):
+        # combines the idea of a catamorphism (with explicit passing of child_results, rather than the more canonical
+        # approach which reconstructs nodes with child_results) with the the passing of the s_address in the tree for
+        # each visited node.
 
-    def bottom_up_construct(self, f, node, s_address):
         node_children = node.children if hasattr(node, 'children') else []
-        children = [self.bottom_up_construct(f, child, s_address + [i]) for i, child in enumerate(node_children)]
-        return f(node, children, s_address)
+        child_results = [self.bottom_up_construct(alg, child, s_address + [i]) for i, child in enumerate(node_children)]
+        return alg(node, child_results, s_address)
 
     def _nt_for_node_single_line(self, node, children_nts, s_address):
         is_cursor = s_address == self.ds.s_cursor
