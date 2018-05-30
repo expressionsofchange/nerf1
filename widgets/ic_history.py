@@ -70,6 +70,9 @@ from dsn.s_expr.simple_score import SimpleScore
 
 ANIMATION_LENGTH = .5  # Seconds
 
+PADDING = PADDING + MARGIN
+MARGIN = 0
+
 
 def _deepest(note):
     """Finds the 'single leaf of the tree' (our notes have either 1 or 0 children); the exception being 'Chord',
