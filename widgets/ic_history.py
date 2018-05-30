@@ -1,4 +1,5 @@
 from utils import pmts
+from functools import partial
 
 from kivy.clock import Clock
 from kivy.core.text import Label
@@ -20,13 +21,10 @@ from dsn.history.ic_clef import (
 )
 
 from widgets.utils import (
-    annotate_boxes_with_s_addresses,
     apply_offset,
     BoxNonTerminal,
     BoxTerminal,
     bring_into_offset,
-    cursor_dimensions,
-    from_point,
     no_offset,
     OffsetBox,
     X,
@@ -81,6 +79,17 @@ def _deepest(note):
     return note  # i.e. everything else, including Chord!
 
 
+def node_cata(alg, node):
+    """A twist on cata: somewhat non-canonical because we pass child_results explicitly as a parameter to alg, rather
+    than constructing a new node which has the already transformed values at .children.
+
+    Works for any rose-tree which has its children in .children; here used for ICSExpr"""
+
+    node_children = node.children if hasattr(node, 'children') else []
+    child_results = [node_cata(alg, child) for child in node_children]
+    return alg(node, child_results)
+
+
 class HistoryWidget(FocusBehavior, Widget):
 
     def __init__(self, **kwargs):
@@ -101,7 +110,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # AFAIU:
         # 1. We could basically set any value below.
 
-        self.ds = EICHStructure(Score.empty(), [], [0], [])
+        self.ds = EICHStructure(Score.empty(), [], 0, [])
 
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
@@ -119,15 +128,11 @@ class HistoryWidget(FocusBehavior, Widget):
 
     def _best_new_cursor(self, prev_cursor, prev_items, new_items, default):
         """Finds a best new cursor given a previous cursor"""
-        # Note: I find all this mapping between various address schemes rather ad hoc, but it works.
 
-        searchfor = prev_items[prev_cursor[0]].address.note_address
+        searchfor = prev_items[prev_cursor].address.note_address
         for i, item in enumerate(new_items):
             if item.address.note_address == searchfor:
-                # We can actually do better, by mapping the selected structural element too... but I have some doubts as
-                # to whether it makes sense to include such elements in our cursor in the first place (as opposed to:
-                # only being able to select notes)
-                return [i]
+                return i
 
         return default
 
@@ -161,7 +166,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.ds = EICHStructure(
             self.ds.score,
             items,
-            self._best_new_cursor(self.ds.cursor, self.ds.items, items, [len(local_score) - 1]),
+            self._best_new_cursor(self.ds.cursor, self.ds.items, items, len(local_score) - 1),
             t_address,
         )
 
@@ -261,14 +266,21 @@ class HistoryWidget(FocusBehavior, Widget):
     def invalidate(self, *args):
         self._invalidated = True
 
+    def _get_cursor_dimensions(self):
+        # Gets the dimensions (cursor_position, cursor_size, both as scalars). Mirrors the generic version in utils.py
+        # implementation: we know that self.target_box_structure is a single NT which contains an NT for each of the
+        # "lines" representing notes; we simply look up the relevant line and return its offset and dimensions.
+        o, nt = self.target_box_structure.offset_nonterminals[self.ds.cursor]
+        return o[Y], nt.outer_dimensions[Y]
+
     def _update_viewport_for_change(self, change_source):
-        # As it stands: copy-pasta from TreeWidget width changes
-        cursor_position, cursor_size = cursor_dimensions(self.target_box_structure, self.ds.cursor)
+        # copy-pasta from TreeWidget width changes
+        cursor_position, cursor_size = self._get_cursor_dimensions()
 
         # In the below, all sizes and positions are brought into the positive integers; there is a mirroring `+` in the
         # offset calculation when we actually apply the viewport.
         context = ViewportContext(
-            document_size=self.target_box_structure.underlying_node.outer_dimensions[Y] * -1,
+            document_size=self.target_box_structure.outer_dimensions[Y] * -1,
             viewport_size=self.size[Y],
             cursor_size=cursor_size * -1,
             cursor_position=cursor_position * -1)
@@ -285,7 +297,7 @@ class HistoryWidget(FocusBehavior, Widget):
         offset_nonterminals = self._nts_for_items(self.ds.items)
         root_nt = BoxNonTerminal(offset_nonterminals, [])
 
-        self.target_box_structure = annotate_boxes_with_s_addresses(root_nt, [])
+        self.target_box_structure = root_nt
 
         self.target = flatten_nt_to_dict(root_nt, (0, 0))
         self.animation_time_remaining = ANIMATION_LENGTH
@@ -333,24 +345,17 @@ class HistoryWidget(FocusBehavior, Widget):
         offset_y = 0
 
         for i, node in enumerate(items):
-            per_step_result = self._nt_for_node(node, i)
+            algebra = partial(self._nt_for_node_single_line, i)
+            per_step_result = node_cata(algebra, node)
+
             result.append(OffsetBox((0, offset_y), per_step_result))
 
             offset_y += per_step_result.outer_dimensions[Y]
 
         return result
 
-    def _nt_for_node(self, node, x):
-        # NOTE about how this was stolen in broad lines from the tree's rendering mechanism.
-        return self.bottom_up_construct(self._nt_for_node_single_line, node, [x])
-
-    def bottom_up_construct(self, f, node, s_address):
-        node_children = node.children if hasattr(node, 'children') else []
-        children = [self.bottom_up_construct(f, child, s_address + [i]) for i, child in enumerate(node_children)]
-        return f(node, children, s_address)
-
-    def _nt_for_node_single_line(self, node, children_nts, s_address):
-        is_cursor = s_address == self.ds.cursor
+    def _nt_for_node_single_line(self, index_in_items, node, children_nts):
+        is_cursor = index_in_items == self.ds.cursor
 
         if isinstance(node, ICAtom):
             return BoxNonTerminal([], [no_offset(
@@ -460,8 +465,19 @@ class HistoryWidget(FocusBehavior, Widget):
         self.m.texture_for_text[text] = label.texture
         return label.texture
 
+    def from_point(self, point):
+        # Given a point, determine what was clicked; Mirrors the generic version in utils.py. Differences:
+        # * we simply iterate over the top-level items only.
+        # * y-based only (we don't check x coordinates at all)
+
+        for i, (o, nt) in enumerate(self.target_box_structure.offset_nonterminals):
+            if o[Y] >= point[Y] >= o[Y] + nt.outer_dimensions[Y]:  # '>=' rather than '<=': kivy's origin is bottom-left
+                return i
+
+        return None
+
     def on_touch_down(self, touch):
-        # COPY/PASTE FROM tree.py, with some
+        # COPY/PASTE FROM tree.py, with some adaptions
 
         ret = super(HistoryWidget, self).on_touch_down(touch)
 
@@ -470,9 +486,9 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.focus = True
 
-        clicked_item = from_point(self.target_box_structure, bring_into_offset(self.offset, (touch.x, touch.y)))
+        clicked_item = self.from_point(bring_into_offset(self.offset, (touch.x, touch.y)))
 
         if clicked_item is not None:
-            self._handle_eich_note(EICHCursorSet(clicked_item.annotation))
+            self._handle_eich_note(EICHCursorSet(clicked_item))
 
         return True
