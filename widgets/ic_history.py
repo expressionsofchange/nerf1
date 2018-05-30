@@ -64,7 +64,7 @@ from dsn.viewports.clef import (
 
 from dsn.s_expr.nerd import NerdSExpr, play_note
 from dsn.s_expr.in_context_display import render_t0  # , render_most_completely
-from dsn.s_expr.in_context_display import ICAtom, ICHAddress
+from dsn.s_expr.in_context_display import ICAtom, ICHAddress, InContextDisplay
 from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
 from dsn.s_expr.simple_score import SimpleScore
 
@@ -89,8 +89,24 @@ def node_cata(alg, node):
     Works for any rose-tree which has its children in .children; here used for ICSExpr"""
 
     node_children = node.children if hasattr(node, 'children') else []
+
     child_results = [node_cata(alg, child) for child in node_children]
     return alg(node, child_results)
+
+
+class ICGrouping(InContextDisplay):
+    """
+    ICGrouping represents: a grouping of InContextDisplay items that has no direct counterpart in an SExpr (and hence:
+    is not creating any rendered elements itself but only transparently renders its children)
+    """
+
+    def __init__(self, children, address=None):
+        pmts(children, list)
+        self.children = children
+        self.address = address
+
+    def __repr__(self):
+        return " ".join(repr(c) for c in self.children)
 
 
 class HistoryWidget(FocusBehavior, Widget):
@@ -157,7 +173,21 @@ class HistoryWidget(FocusBehavior, Widget):
             nerd_s_expr = play_note(s.last_note(), initial_nerd_s_expr)
             renderings = render_t0(nerd_s_expr, address=prefix)
 
-            items.extend(renderings)
+            # The return type of the render_* functions is a list of InContextDisplay items; the reasons for there to be
+            # more or less than a single return value are:
+            # 1. insertions inside deletions (no values returned);
+            # 2. set-atom: renders the pre-change and post-change states (multiple values returned)
+            # Point 1 does not apply here, because the outermost context is never deleted (true for any context: even
+            # though arbitrary nodes may be deleted, that deletion is never part of that node's history, but of its
+            # parent's history)
+            # Point 2 does apply: we render atom histories when an atom is clicked. To ensure that a single set-atom is
+            # rendered as a single item we group the results from render_t0 into a ICGrouping.
+            assert len(renderings) > 0, "An error in the human reasoning in the comment above this line (point 1)"
+
+            if len(renderings) > 1:
+                items.append(ICGrouping(renderings, address=prefix))
+            else:
+                items.extend(renderings)
 
         return items
 
@@ -359,6 +389,16 @@ class HistoryWidget(FocusBehavior, Widget):
 
     def _nt_for_node_single_line(self, index_in_items, node, children_nts):
         is_cursor = index_in_items == self.ds.cursor
+
+        if isinstance(node, ICGrouping):
+            offset_nonterminals = []
+            offset_right = 0
+
+            for nt in children_nts:
+                offset_nonterminals.append(OffsetBox((offset_right, 0), nt))
+                offset_right += nt.outer_dimensions[X]
+
+            return BoxNonTerminal(offset_nonterminals, [])
 
         if isinstance(node, ICAtom):
             return BoxNonTerminal([], [no_offset(
