@@ -49,8 +49,8 @@ from colorscheme import (
 )
 from widgets.layout_constants import (
     get_font_size,
-    MARGIN,
     PADDING,
+    MARGIN,
 )
 
 from dsn.viewports.structure import ViewportStructure, VRTC, ViewportContext
@@ -389,8 +389,8 @@ class HistoryWidget(FocusBehavior, Widget):
         content_width = text_texture.width
 
         top_left = 0, 0
-        bottom_left = (top_left[X], top_left[Y] - PADDING - MARGIN - content_height - MARGIN - PADDING)
-        bottom_right = (bottom_left[X] + PADDING + MARGIN + content_width + MARGIN + PADDING, bottom_left[Y])
+        bottom_left = (top_left[X], top_left[Y] - MARGIN - PADDING - content_height - PADDING - MARGIN)
+        bottom_right = (bottom_left[X] + MARGIN + PADDING + content_width + PADDING + MARGIN, bottom_left[Y])
 
         if bg is None:
             instructions = []
@@ -398,15 +398,15 @@ class HistoryWidget(FocusBehavior, Widget):
             instructions = [
                 Color(*bg),
                 Rectangle(
-                    pos=(bottom_left[0] + PADDING, bottom_left[1] + PADDING),
-                    size=(content_width + 2 * MARGIN, content_height + 2 * MARGIN),
+                    pos=(bottom_left[0] + MARGIN, bottom_left[1] + MARGIN),
+                    size=(content_width + 2 * PADDING, content_height + 2 * PADDING),
                     ),
             ]
 
         instructions += [
             Color(*fg),
             Rectangle(
-                pos=(bottom_left[0] + PADDING + MARGIN, bottom_left[1] + PADDING + MARGIN),
+                pos=(bottom_left[0] + MARGIN + PADDING, bottom_left[1] + MARGIN + PADDING),
                 size=text_texture.size,
                 texture=text_texture,
                 ),

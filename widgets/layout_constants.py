@@ -1,5 +1,5 @@
-MARGIN = 5
-PADDING = 3
+PADDING = 5
+MARGIN = 3
 
 
 GREY = (0.95, 0.95, 0.95, 1)  # Ad Hoc Grey
