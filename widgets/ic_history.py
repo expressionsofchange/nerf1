@@ -17,6 +17,7 @@ from spacetime import get_s_address_for_t_address
 from s_address import node_for_s_address
 
 from dsn.history.ic_clef import (
+    EICHCursorMove,
     EICHCursorSet,
 )
 
@@ -289,6 +290,12 @@ class HistoryWidget(FocusBehavior, Widget):
 
         elif textual_code in ['z']:
             self.z_pressed = True
+
+        elif textual_code in ['up', 'k']:
+            self._handle_eich_note(EICHCursorMove(-1))
+
+        elif textual_code in ['down', 'j']:
+            self._handle_eich_note(EICHCursorMove(1))
 
         return True
 
