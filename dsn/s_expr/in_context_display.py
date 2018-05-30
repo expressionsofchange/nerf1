@@ -40,7 +40,16 @@ def plusminus(is_inserted, is_deleted):
 
 
 class ICHAddress(object):
-    # TODO explain
+    """
+    An ICHAddress uniquely identifies a rendered "non-terminal" in the ic_history's rendering of history.
+
+    Note that "In Context History", by design, shows a part of history (note) by showing the effects the application of
+    the note has on a certain structure, and by using the rendering mechanism of that structure.
+
+    This mixing of 'construction' and 'structure' is reflected in the address of the rendered elements; each rendered
+    element is denoted first by the note which it represents, and second by an address (t_address, for stability over
+    time) in the tree. (further steps in the rendering chain add further details, i.e. icd_specific and render_specific)
+    """
 
     def __init__(self, note_address=(), t_address=(), icd_specific="", render_specific=""):
         self.note_address = note_address
@@ -52,10 +61,17 @@ class ICHAddress(object):
         return ICHAddress(self.note_address, self.t_address + (t_index,))
 
     def as_icd(self, icd_specific):
+        """Adds the information specific to the render_* functions, i.e. the information that is specific in the
+        transformation from NerdSExpr => InContextDisplay."""
         return ICHAddress(self.note_address, self.t_address, icd_specific)
 
     def with_render(self, render_specific):
+        """Adds the information specific to the rendering to Box[Non]Terminal, e.g. the fact that a single ICList is
+        rendered as 2 parens."""
         return ICHAddress(self.note_address, self.t_address, self.icd_specific, render_specific)
+
+    def __repr__(self):
+        return repr((self.note_address, self.t_address, self.icd_specific, self.render_specific))
 
     def __eq__(self, other):
         return (isinstance(other, ICHAddress) and
