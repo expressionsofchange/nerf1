@@ -17,6 +17,8 @@ from spacetime import get_s_address_for_t_address
 from s_address import node_for_s_address
 
 from dsn.history.ic_clef import (
+    EICHChordCollapse,
+    EICHChordExpand,
     EICHCursorMove,
     EICHCursorSet,
 )
@@ -63,9 +65,11 @@ from dsn.viewports.clef import (
     VIEWPORT_LINE_UP,
 )
 
+from dsn.s_expr.construct import play_note as play_note_regularly
 from dsn.s_expr.nerd import NerdSExpr, play_note
 from dsn.s_expr.in_context_display import render_t0  # , render_most_completely
 from dsn.s_expr.in_context_display import ICAtom, ICHAddress, InContextDisplay
+from dsn.s_expr.clef import Chord
 from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
 from dsn.s_expr.simple_score import SimpleScore
 
@@ -81,6 +85,17 @@ def _deepest(note):
     if hasattr(note, 'child_note'):
         return _deepest(note.child_note)  # i.e. for Insert & Extend
     return note  # i.e. everything else, including Chord!
+
+
+def _x_deepest(note):
+    """Searches like _deepest; creates a constructor to rewrap"""
+    # Are addresses needed here? probably not (yet?)
+
+    if hasattr(note, 'child_note'):
+        # i.e. for Insert & Extend (and their addressed counterparts)... TODO actually: only addressed
+        return lambda inner: type(note)(note.address, note.index, _x_deepest(note.child_note)(inner))
+
+    return lambda inner: inner  # i.e. the empty wrapper for everything else, including Chord!
 
 
 def node_cata(alg, node):
@@ -130,7 +145,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # AFAIU:
         # 1. We could basically set any value below.
 
-        self.ds = EICHStructure(Score.empty(), [], 0, [])
+        self.ds = EICHStructure(Score.empty(), [], 0, [], set())
 
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
@@ -156,22 +171,31 @@ class HistoryWidget(FocusBehavior, Widget):
 
         return default
 
-    def _items(self, score, t_address):
+    def _items(self, score, t_address, expanded_chords):
         items = []
         for s in reversed(list(score.scores())):
+            note_to_render = s.last_note()
+
             scores = iter(s.scores())
             next(scores)  # the note's own score
             score_up_to_note = next(scores, None)
 
             if score_up_to_note is None:
-                initial_nerd_s_expr = None
+                s_expr_before_note = None
             else:
-                state_before_note = play_simple_score(score_up_to_note)
-                initial_nerd_s_expr = NerdSExpr.from_s_expr(state_before_note)
+                s_expr_before_note = play_simple_score(score_up_to_note)
 
-            prefix = ICHAddress(_deepest(s.last_note()).address, tuple(t_address))
+            deepest_node = _deepest(note_to_render)
 
-            nerd_s_expr = play_note(s.last_note(), initial_nerd_s_expr)
+            if isinstance(deepest_node, Chord) and deepest_node.address in expanded_chords:
+                items.extend(self._ad_hoc_copy_pasta(s_expr_before_note, note_to_render, t_address, expanded_chords))
+                continue
+
+            initial_nerd_s_expr = NerdSExpr.from_s_expr(s_expr_before_note)
+
+            prefix = ICHAddress(_deepest(note_to_render).address, tuple(t_address))
+
+            nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
             renderings = render_t0(nerd_s_expr, address=prefix)
 
             # The return type of the render_* functions is a list of InContextDisplay items; the reasons for there to be
@@ -192,16 +216,53 @@ class HistoryWidget(FocusBehavior, Widget):
 
         return items
 
+    def _ad_hoc_copy_pasta(self, s_expr_so_far, chord_containing_node, t_address, expanded_chords):
+        # copy_pasta source: _items
+        items = []
+
+        chord = _deepest(chord_containing_node)
+        rewrap = _x_deepest(chord_containing_node)
+
+        for inner_note in chord.score.notes:
+            note_to_render = rewrap(inner_note)
+
+            deepest_node = _deepest(note_to_render)
+
+            if isinstance(deepest_node, Chord) and deepest_node.address in expanded_chords:
+                items.extend(self._ad_hoc_copy_pasta(s_expr_so_far, note_to_render, t_address))
+                continue
+
+            initial_nerd_s_expr = NerdSExpr.from_s_expr(s_expr_so_far)
+
+            prefix = ICHAddress(_deepest(note_to_render).address, tuple(t_address))
+
+            nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
+
+            renderings = render_t0(nerd_s_expr, address=prefix)
+
+            # comment not copied
+            assert len(renderings) > 0, "An error in the human reasoning in the comment above this line (point 1)"
+
+            if len(renderings) > 1:
+                items.append(ICGrouping(renderings, address=prefix))
+            else:
+                items.extend(renderings)
+
+            s_expr_so_far = play_note_regularly(note_to_render, s_expr_so_far, SimpleScore)
+
+        return items
+
     def parent_cursor_update(self, data):
         t_address = data
         local_score = self._local_score(self.ds.score, t_address)
-        items = self._items(local_score, t_address)
+        items = self._items(local_score, t_address, self.ds.expanded_chords)
 
         self.ds = EICHStructure(
             self.ds.score,
             items,
             self._best_new_cursor(self.ds.cursor, self.ds.items, items, len(local_score) - 1),
             t_address,
+            self.ds.expanded_chords,
         )
 
         self._construct_target_box_structure()
@@ -235,9 +296,10 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.ds = EICHStructure(
             score,
-            self._items(local_score, self.ds.tree_t_address),
+            self._items(local_score, self.ds.tree_t_address, self.ds.expanded_chords),
             self.ds.cursor,
             self.ds.tree_t_address,
+            self.ds.expanded_chords,
         )
 
         self._construct_target_box_structure()
@@ -250,14 +312,15 @@ class HistoryWidget(FocusBehavior, Widget):
         self.invalidate()
 
     def _handle_eich_note(self, eich_note):
-        new_cursor, error = eich_note_play(self.ds, eich_note)
+        new_cursor, new_expanded_chords, error = eich_note_play(self.ds, eich_note)
         local_score = self._local_score(self.ds.score, self.ds.tree_t_address)
 
         self.ds = EICHStructure(
             self.ds.score,
-            self._items(local_score, self.ds.tree_t_address),
+            self._items(local_score, self.ds.tree_t_address, new_expanded_chords),
             new_cursor,
             self.ds.tree_t_address,
+            new_expanded_chords,
         )
 
         self._construct_target_box_structure()
@@ -296,6 +359,12 @@ class HistoryWidget(FocusBehavior, Widget):
 
         elif textual_code in ['down', 'j']:
             self._handle_eich_note(EICHCursorMove(1))
+
+        elif textual_code in ['i']:
+            self._handle_eich_note(EICHChordCollapse())
+
+        elif textual_code in ['o']:
+            self._handle_eich_note(EICHChordExpand())
 
         return True
 

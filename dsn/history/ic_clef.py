@@ -12,3 +12,12 @@ class EICHCursorSet(EICHNote):
 class EICHCursorMove(EICHNote):
     def __init__(self, direction):
         self.direction = direction
+
+
+# Chords
+class EICHChordCollapse(object):
+    pass
+
+
+class EICHChordExpand(object):
+    pass

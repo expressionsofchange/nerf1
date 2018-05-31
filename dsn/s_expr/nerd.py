@@ -40,6 +40,10 @@ class NerdSExpr(object):
 
     @classmethod
     def from_s_expr(cls, s_expr):
+        if s_expr is None:
+            # TODO really the best place for this?
+            return None
+
         pmts(s_expr, SExpr)
 
         if isinstance(s_expr, Atom):
