@@ -287,7 +287,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self.animation_time_remaining = ANIMATION_LENGTH
 
     def tick(self, dt):
-        if self.animation_time_remaining >= 0:
+        if self.animation_time_remaining > 0:
             self.present = animate(dt / self.animation_time_remaining, self.present, self.target)
             self.present_viewport_position = animate_scalar(
                 dt / self.animation_time_remaining, self.present_viewport_position, self.target_viewport_position)
