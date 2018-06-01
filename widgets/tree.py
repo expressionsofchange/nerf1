@@ -177,6 +177,7 @@ class TreeWidget(FocusBehavior, Widget):
         self.closed = False
 
         self.m = kwargs.pop('m')
+        self.record = kwargs.pop('record')
         self.history_channel = kwargs.pop('history_channel')
 
         super(TreeWidget, self).__init__(**kwargs)
@@ -337,6 +338,10 @@ class TreeWidget(FocusBehavior, Widget):
         return True
 
     def generalized_key_press(self, textual_code):
+        self.record('generalized_key_press', textual_code)
+        return self._actual_generalized_key_press(textual_code)
+
+    def _actual_generalized_key_press(self, textual_code):
         """
         Kivy's keyboard-handling is lacking in documentation (or I cannot find it).
 
@@ -696,11 +701,15 @@ class TreeWidget(FocusBehavior, Widget):
         # 1. Kivy (intentionally) does not limit its passing of touch events to widgets that it applies to, you
         #   need to do this youself
         # 2. You need to call super and return its value
-        ret = super(TreeWidget, self).on_touch_down(touch)
 
-        if not self.collide_point(*touch.pos):
+        ret = super(TreeWidget, self).on_touch_down(touch)
+        if not self.collide_point(touch.x, touch.y):
             return ret
 
+        self.record('on_touch_down', {'x': touch.x, 'y': touch.y})
+        return self._actual_on_touch_down(touch)
+
+    def _actual_on_touch_down(self, touch):
         self.focus = True
 
         clicked_item = from_point(self.box_structure, bring_into_offset(self.offset, (touch.x, touch.y)))

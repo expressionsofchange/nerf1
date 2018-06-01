@@ -1,6 +1,5 @@
 from utils import pmts
 
-from kivy.clock import Clock
 from kivy.core.text import Label
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import pt
@@ -102,7 +101,6 @@ class HistoryWidget(FocusBehavior, Widget):
         self.present = {}
         self.animation_time_remaining = 0
 
-        Clock.schedule_interval(self.tick, 1 / 60)
         self.bind(pos=self.invalidate)
         self.bind(size=self.size_change)
 
