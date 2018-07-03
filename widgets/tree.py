@@ -34,7 +34,7 @@ from dsn.editor.structure import EditStructure
 from annotated_tree import annotated_node_factory
 
 from dsn.pp.structure import PPSingleLine
-from dsn.pp.clef import PPUnset, PPSetSingleLine, PPSetLispy
+from dsn.pp.clef import PPUnset, PPSetSingleLine, PPSetMultiLineAligned
 from dsn.pp.construct import construct_pp_tree
 
 from s_address import node_for_s_address
@@ -108,7 +108,7 @@ INSERT_AFTER = 1
 
 
 # Multiline modes:
-LISPY = 0
+MULTI_LINE_ALIGNED = 0
 SINGLE_LINE = 1
 
 
@@ -124,7 +124,7 @@ class InheritedRenderingInformation(object):
 IriAnnotatedNode = annotated_node_factory("IriAnnotatedNode", SExpr, InheritedRenderingInformation)
 
 
-def construct_lispy_iri_top_down(pp_annotated_node, inherited_information):
+def construct_iri_top_down(pp_annotated_node, inherited_information):
     """Constructs the InheritedRenderingInformation in a top-down fashion. Note the difference between the PP
     instructions and the InheritedRenderingInformation: the PP instructions must be viewed in the light of their
     ancestors, the InheritedRenderingInformation can be used without such lookups in the tree, and is therefore more
@@ -152,9 +152,9 @@ def construct_lispy_iri_top_down(pp_annotated_node, inherited_information):
             # override), the below must also be updated (offset_down for child[n > 0] should be non-zero)
             child_information = InheritedRenderingInformation(SINGLE_LINE)
         else:
-            child_information = InheritedRenderingInformation(LISPY)
+            child_information = InheritedRenderingInformation(MULTI_LINE_ALIGNED)
 
-        annotated_children.append(construct_lispy_iri_top_down(child, child_information))
+        annotated_children.append(construct_iri_top_down(child, child_information))
 
     return IriAnnotatedNode(
         underlying_node=pp_annotated_node.underlying_node,
@@ -471,7 +471,7 @@ class TreeWidget(FocusBehavior, Widget):
             pp_map = {
                 'u': PPUnset,
                 'i': PPSetSingleLine,
-                'o': PPSetLispy,
+                'o': PPSetMultiLineAligned,
             }
             pp_note_type = pp_map[textual_code]
             self._change_pp_style(pp_note_type)
@@ -840,11 +840,12 @@ class TreeWidget(FocusBehavior, Widget):
         return BLACK, WHITE
 
     def _nts_for_pp_annotated_node(self, pp_annotated_node):
-        iri_annotated_node = construct_lispy_iri_top_down(
+        iri_annotated_node = construct_iri_top_down(
             pp_annotated_node,
 
-            # We start LISPY (but if the first PP node is annotated non-lispy, the result will still be a single line)
-            InheritedRenderingInformation(LISPY),
+            # We start MULTI_LINE_ALIGNED (but if the first PP node is annotated as SINGLE_LINEthe result will still be
+            # a single line)
+            InheritedRenderingInformation(MULTI_LINE_ALIGNED),
         )
 
         if self.vim_ds is not None:
@@ -908,8 +909,8 @@ class TreeWidget(FocusBehavior, Widget):
         # we get some more cases of "how is the selection actually used?"
         is_selection = s_address in [self.selection_ds.edge_0, self.selection_ds.edge_1]
 
-        if iri_annotated_node.annotation.multiline_mode == LISPY:
-            f = self._nt_for_node_as_lispy_layout
+        if iri_annotated_node.annotation.multiline_mode == MULTI_LINE_ALIGNED:
+            f = self._nt_for_node_as_multi_line_aligned
         else:  # SINGLE_LINE
             f = self._nt_for_node_single_line
 
@@ -967,7 +968,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         return BoxNonTerminal(offset_nonterminals, [no_offset(t)])
 
-    def _nt_for_node_as_lispy_layout(self, iri_annotated_node, children_nts, is_cursor, is_selection):
+    def _nt_for_node_as_multi_line_aligned(self, iri_annotated_node, children_nts, is_cursor, is_selection):
         # "Lisp Style indentation, i.e. xxx yyy
         #                                   zzz
         pmts(iri_annotated_node, IriAnnotatedNode)

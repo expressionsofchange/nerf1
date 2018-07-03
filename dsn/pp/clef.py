@@ -11,5 +11,5 @@ class PPSetSingleLine(PPNote):
     pass
 
 
-class PPSetLispy(PPNote):
+class PPSetMultiLineAligned(PPNote):
     pass

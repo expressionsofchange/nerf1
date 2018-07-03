@@ -15,7 +15,7 @@ class PPSingleLine(PPAnnotation):
     pass
 
 
-class PPLispy(PPAnnotation):
+class PPMultiLineAligned(PPAnnotation):
     pass
 
 
