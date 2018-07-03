@@ -3,8 +3,8 @@ from s_address import node_for_s_address
 
 from dsn.s_expr.structure import Atom
 
-from dsn.pp.structure import PPNone, PPSingleLine, PPMultiLineAligned, PPAnnotatedSExpr
-from dsn.pp.clef import PPUnset, PPSetSingleLine, PPSetMultiLineAligned
+from dsn.pp.structure import PPNone, PPSingleLine, PPMultiLineAligned, PPMultiLineIndented, PPAnnotatedSExpr
+from dsn.pp.clef import PPUnset, PPSetSingleLine, PPSetMultiLineAligned, PPSetMultiLineIndented
 
 
 def build_annotated_tree(node, default_annotation):
@@ -42,6 +42,8 @@ def construct_pp_tree(tree, pp_annotations):
             new_value = PPSingleLine()
         elif isinstance(pp_note, PPSetMultiLineAligned):
             new_value = PPMultiLineAligned()
+        elif isinstance(pp_note, PPSetMultiLineIndented):
+            new_value = PPMultiLineIndented()
         else:
             raise Exception("Unknown PP Note")
 

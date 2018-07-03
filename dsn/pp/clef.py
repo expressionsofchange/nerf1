@@ -13,3 +13,7 @@ class PPSetSingleLine(PPNote):
 
 class PPSetMultiLineAligned(PPNote):
     pass
+
+
+class PPSetMultiLineIndented(PPNote):
+    pass

@@ -33,8 +33,8 @@ from dsn.editor.structure import EditStructure
 
 from annotated_tree import annotated_node_factory
 
-from dsn.pp.structure import PPSingleLine
-from dsn.pp.clef import PPUnset, PPSetSingleLine, PPSetMultiLineAligned
+from dsn.pp.structure import PPSingleLine, PPNone, PPMultiLineAligned, PPMultiLineIndented
+from dsn.pp.clef import PPUnset, PPSetSingleLine, PPSetMultiLineAligned, PPSetMultiLineIndented
 from dsn.pp.construct import construct_pp_tree
 
 from s_address import node_for_s_address
@@ -109,7 +109,8 @@ INSERT_AFTER = 1
 
 # Multiline modes:
 MULTI_LINE_ALIGNED = 0
-SINGLE_LINE = 1
+MULTI_LINE_INDENTED = 1
+SINGLE_LINE = 2
 
 
 class InheritedRenderingInformation(object):
@@ -143,6 +144,12 @@ def construct_iri_top_down(pp_annotated_node, inherited_information):
     if type(pp_annotated_node.annotation) in [PPSingleLine]:
         my_information = InheritedRenderingInformation(SINGLE_LINE)
 
+    elif type(pp_annotated_node.annotation) in [PPMultiLineAligned, PPNone]:  # i.e. this is the default
+        my_information = InheritedRenderingInformation(MULTI_LINE_ALIGNED)
+
+    elif type(pp_annotated_node.annotation) in [PPMultiLineIndented]:
+        my_information = InheritedRenderingInformation(MULTI_LINE_INDENTED)
+
     for i, child in enumerate(children):
         if i == 0 or my_information.multiline_mode == SINGLE_LINE:
             # The fact that the first child may in fact _not_ be simply text, but any arbitrary tree, is a scenario that
@@ -151,8 +158,11 @@ def construct_iri_top_down(pp_annotated_node, inherited_information):
             # If we were ever to make it a user-decision how to render that child (i.e. allow for a non-single-line
             # override), the below must also be updated (offset_down for child[n > 0] should be non-zero)
             child_information = InheritedRenderingInformation(SINGLE_LINE)
-        else:
+        elif my_information.multiline_mode == MULTI_LINE_ALIGNED:
             child_information = InheritedRenderingInformation(MULTI_LINE_ALIGNED)
+
+        else:  # implied: MULTI_LINE_INDENTED
+            child_information = InheritedRenderingInformation(MULTI_LINE_INDENTED)
 
         annotated_children.append(construct_iri_top_down(child, child_information))
 
@@ -467,11 +477,12 @@ class TreeWidget(FocusBehavior, Widget):
 
         # All the keys I've picked so far are quite arbitrary, and will at some point become configurable. Admittedly,
         # the 3 keys below are the worst choices so far.
-        elif textual_code in ['u', 'i', 'o']:
+        elif textual_code in ['u', 'i', 'o', 'p']:
             pp_map = {
                 'u': PPUnset,
                 'i': PPSetSingleLine,
                 'o': PPSetMultiLineAligned,
+                'p': PPSetMultiLineIndented,
             }
             pp_note_type = pp_map[textual_code]
             self._change_pp_style(pp_note_type)
@@ -843,8 +854,7 @@ class TreeWidget(FocusBehavior, Widget):
         iri_annotated_node = construct_iri_top_down(
             pp_annotated_node,
 
-            # We start MULTI_LINE_ALIGNED (but if the first PP node is annotated as SINGLE_LINEthe result will still be
-            # a single line)
+            # We start MULTI_LINE_ALIGNED (but if the first PP node is annotated otherwise the result will reflect that
             InheritedRenderingInformation(MULTI_LINE_ALIGNED),
         )
 
@@ -911,6 +921,8 @@ class TreeWidget(FocusBehavior, Widget):
 
         if iri_annotated_node.annotation.multiline_mode == MULTI_LINE_ALIGNED:
             f = self._nt_for_node_as_multi_line_aligned
+        elif iri_annotated_node.annotation.multiline_mode == MULTI_LINE_INDENTED:
+            f = self._nt_for_node_as_multi_line_indented
         else:  # SINGLE_LINE
             f = self._nt_for_node_single_line
 
@@ -969,8 +981,9 @@ class TreeWidget(FocusBehavior, Widget):
         return BoxNonTerminal(offset_nonterminals, [no_offset(t)])
 
     def _nt_for_node_as_multi_line_aligned(self, iri_annotated_node, children_nts, is_cursor, is_selection):
-        # "Lisp Style indentation, i.e. xxx yyy
-        #                                   zzz
+        # "Align with index=1, like so:..  (xxx yyy
+        #                                       zzz)
+
         pmts(iri_annotated_node, IriAnnotatedNode)
 
         node = iri_annotated_node.underlying_node
@@ -1004,6 +1017,59 @@ class TreeWidget(FocusBehavior, Widget):
                 # get the final drawn item to figure out where to put the closing ")"
                 last_drawn = nt.get_all_terminals()[-1]
                 offset_right += last_drawn.item.outer_dimensions[X] + last_drawn.offset[X]
+
+                # go "one line" back up
+                offset_down -= last_drawn.item.outer_dimensions[Y]
+
+        else:
+            offset_right = t.outer_dimensions[X]
+
+        t = self._t_for_text(")", self.colors_for_cursor(is_cursor, is_selection))
+        offset_terminals.append(OffsetBox((offset_right, offset_down), t))
+
+        return BoxNonTerminal(offset_nonterminals, offset_terminals)
+
+    def _nt_for_node_as_multi_line_indented(self, iri_annotated_node, children_nts, is_cursor, is_selection):
+        # "Indented with the equivalent of 2 spaces, like so:..  (xxx yyy
+        #                                                           zzz)
+        # TODO this is a pure copy/pasta with _nt_for_node_as_multi_line_aligned with alterations; factoring the
+        # commonalities out would be the proper course of action here.
+
+        pmts(iri_annotated_node, IriAnnotatedNode)
+
+        node = iri_annotated_node.underlying_node
+
+        if isinstance(node, Atom):
+            return BoxNonTerminal([], [no_offset(self._t_for_text(
+                node.atom, self.colors_for_cursor(is_cursor, is_selection)))])
+
+        t = self._t_for_text("(", self.colors_for_cursor(is_cursor, is_selection))
+        offset_right_i1 = offset_right = t.outer_dimensions[X]
+        offset_right_i2_plus = t.outer_dimensions[X] * 2  # ")  " by approximation
+        offset_down = 0
+
+        offset_terminals = [
+            no_offset(t),
+        ]
+        offset_nonterminals = []
+
+        if len(children_nts) > 0:
+            nt = children_nts[0]
+
+            offset_nonterminals.append(
+                OffsetBox((offset_right_i1, offset_down), nt)
+            )
+
+            if len(children_nts) > 1:
+                offset_down += nt.outer_dimensions[Y]
+
+                for nt in children_nts[1:]:
+                    offset_nonterminals.append(OffsetBox((offset_right_i2_plus, offset_down), nt))
+                    offset_down += nt.outer_dimensions[Y]
+
+                # get the final drawn item to figure out where to put the closing ")"
+                last_drawn = nt.get_all_terminals()[-1]
+                offset_right = offset_right_i2_plus + last_drawn.item.outer_dimensions[X] + last_drawn.offset[X]
 
                 # go "one line" back up
                 offset_down -= last_drawn.item.outer_dimensions[Y]

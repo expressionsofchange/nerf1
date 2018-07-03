@@ -19,4 +19,8 @@ class PPMultiLineAligned(PPAnnotation):
     pass
 
 
+class PPMultiLineIndented(PPAnnotation):
+    pass
+
+
 PPAnnotatedSExpr = annotated_node_factory('PPAnnotatedSExpr', SExpr, PPAnnotation)
