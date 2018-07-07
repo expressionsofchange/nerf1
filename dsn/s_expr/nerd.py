@@ -54,7 +54,7 @@ class NerdSExpr(object):
 
 class NerdAtom(NerdSExpr):
 
-    def __init__(self, atom, versions, is_deleted, score=None, address=None):
+    def __init__(self, atom, versions, is_deleted, score=None):
         pmts(atom, str)
         pmts(versions, list)
         pmts(is_deleted, bool)
@@ -73,7 +73,6 @@ class NerdAtom(NerdSExpr):
         self.versions = versions
         self.is_deleted = is_deleted
         self.score = score
-        self.address = address
 
     @classmethod
     def from_s_expr(cls, s_expr):
@@ -81,8 +80,7 @@ class NerdAtom(NerdSExpr):
             s_expr.atom,
             [],
             False,
-            s_expr.score,
-            s_expr.address)
+            s_expr.score)
 
     def __repr__(self):
         return "«" + " ".join(str(v) for v in self.versions) + "»" + plusminus(False, self.is_deleted) + self.atom
@@ -96,7 +94,7 @@ class NerdAtom(NerdSExpr):
 
 class NerdList(NerdSExpr):
 
-    def __init__(self, children, n2s, s2n, n2t, max_t, is_inserted, is_deleted, score=None, address=None):
+    def __init__(self, children, n2s, s2n, n2t, max_t, is_inserted, is_deleted, score=None):
         # children are nerd-children, that is they have a type from the present module **and they need not actually be
         # alive**
 
@@ -111,7 +109,6 @@ class NerdList(NerdSExpr):
         self.is_deleted = is_deleted
 
         self.score = score
-        self.address = address
 
     @classmethod
     def from_s_expr(cls, s_expr):
@@ -123,8 +120,7 @@ class NerdList(NerdSExpr):
             len(s_expr.t2s) - 1,  # EXPLAIN
             False,
             False,
-            s_expr.score,
-            s_expr.address)
+            s_expr.score)
 
     def deleted_version(self):
         return NerdList(
