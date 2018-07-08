@@ -12,6 +12,8 @@ class Atom(SExpr):
         pmts(atom, str)
         self.atom = atom
         self.score = score
+
+        # NOTE: `address` is used exclusively when the SExpr is the result of clef_address.py's "GlobNote" to_s_expr()
         self.address = address
 
     def __repr__(self):
@@ -31,6 +33,8 @@ class List(SExpr):
         self.t2s = t2s
         self.s2t = s2t
         self.score = score
+
+        # NOTE: `address` is used exclusively when the SExpr is the result of clef_address.py's "GlobNote" to_s_expr()
         self.address = address
 
     def __repr__(self):
