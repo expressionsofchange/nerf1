@@ -111,14 +111,33 @@ class HistoryWidget(FocusBehavior, Widget):
         # Note: I find all this mapping between various address schemes rather ad hoc, but it works.
 
         def _best(s_expr_node, global_address, path_so_far):
+            """Find the best match for global_address in s_expr_node;
+            Return an s_address to this (which is collected in a variable path_so_far)"""
 
             if global_address == s_expr_node.address:
                 return path_so_far  # precise match, return
 
             for i, child in enumerate(getattr(s_expr_node, 'children', [])):
                 if len(global_address) > len(s_expr_node.address):
-                    # A special case, to
-                    the_next = global_address[len(s_expr_node.address)]
+                    # This branch is here to deal with descending into chords' list field. The hackyness of it arises
+                    # from the fact that the global note-address that we're looking for encodes the fact that a note is
+                    # InScore somewhere, but the list-expr that is used to represent that score does itself not have an
+                    # address which is InScore. Hence, the general descend-by-prefix-matching trick from below doesn't
+                    # work. In a picture:
+
+                    # if you're looking for something inside a chord:
+                    # (chord (....OVER-HERE... ))
+                    # that something will have an address like (3, @1), and will be marked as such.
+                    # but on the way you'll encounter a list, with address (3, 'list'), which _is_ the right thing to
+                    # descend into.
+
+                    # The key here is the if-statement below: if the_next part of the global address to consider is an
+                    # InScore, and the child we're currently considering is the list-field of the score, you're on
+                    # track: descend. The if-statement above (comparing the lenghts) is only here to ensure there
+                    # actually is a next part of the global address to consider (i.e. guard against index out of bounds)
+
+                    # Determining the next part to consider: one beyond the end of s_expr_node.address.
+                    the_next = global_address[len(s_expr_node.address) - 1 + 1]
                     if isinstance(the_next, InScore) and child.address[-1] == 'list':
                         return _best(child, global_address, path_so_far + [i])  # it's better
 
