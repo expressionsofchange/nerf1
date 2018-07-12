@@ -13,8 +13,9 @@ from dsn.history.structure import EHStructure
 from dsn.s_expr.score import Score
 # from dsn.s_expr.construct import play_score
 from dsn.s_expr.structure import Atom, List
-from dsn.s_expr.clef_address import play_simple_score, score_with_global_address, InScore
+from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
 from dsn.s_expr.simple_score import SimpleScore
+from dsn.s_expr.note_address import els18_root_address, ELS18RenderingAddress
 
 from spacetime import get_s_address_for_t_address
 from s_address import node_for_s_address
@@ -90,7 +91,7 @@ class HistoryWidget(FocusBehavior, Widget):
         # AFAIU:
         # 1. We could basically set any value below.
 
-        self.ds = EHStructure(Score.empty(), List([], address=()), [0], [])
+        self.ds = EHStructure(Score.empty(), List([], address=els18_root_address), [0], [])
 
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
@@ -118,30 +119,7 @@ class HistoryWidget(FocusBehavior, Widget):
                 return path_so_far  # precise match, return
 
             for i, child in enumerate(getattr(s_expr_node, 'children', [])):
-                if len(global_address) > len(s_expr_node.address):
-                    # This branch is here to deal with descending into chords' list field. The hackyness of it arises
-                    # from the fact that the global note-address that we're looking for encodes the fact that a note is
-                    # InScore somewhere, but the list-expr that is used to represent that score does itself not have an
-                    # address which is InScore. Hence, the general descend-by-prefix-matching trick from below doesn't
-                    # work. In a picture:
-
-                    # if you're looking for something inside a chord:
-                    # (chord (....OVER-HERE... ))
-                    # that something will have an address like (3, @1), and will be marked as such.
-                    # but on the way you'll encounter a list, with address (3, 'list'), which _is_ the right thing to
-                    # descend into.
-
-                    # The key here is the if-statement below: if the_next part of the global address to consider is an
-                    # InScore, and the child we're currently considering is the list-field of the score, you're on
-                    # track: descend. The if-statement above (comparing the lenghts) is only here to ensure there
-                    # actually is a next part of the global address to consider (i.e. guard against index out of bounds)
-
-                    # Determining the next part to consider: one beyond the end of s_expr_node.address.
-                    the_next = global_address[len(s_expr_node.address) - 1 + 1]
-                    if isinstance(the_next, InScore) and child.address[-1] == 'list':
-                        return _best(child, global_address, path_so_far + [i])  # it's better
-
-                if child.address == global_address[:len(child.address)]:
+                if child.address.is_prefix_of(global_address):
                     return _best(child, global_address, path_so_far + [i])  # it's better
 
             return path_so_far  # no child is better; return yourself
@@ -159,7 +137,7 @@ class HistoryWidget(FocusBehavior, Widget):
         t_address = data
 
         local_score = self._local_score(self.ds.score, t_address)
-        as_s_expr = List([n.to_s_expression() for n in local_score.notes()], address=())
+        as_s_expr = List([n.to_s_expression() for n in local_score.notes()], address=els18_root_address)
 
         self.ds = EHStructure(
             self.ds.score,
@@ -199,7 +177,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.ds = EHStructure(
             score,
-            List([n.to_s_expression() for n in local_score.notes()], address=()),
+            List([n.to_s_expression() for n in local_score.notes()], address=els18_root_address),
             self.ds.s_cursor,
             self.ds.tree_t_address,
         )
@@ -218,7 +196,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.ds = EHStructure(
             self.ds.score,
-            List([n.to_s_expression() for n in local_score.notes()], address=()),
+            List([n.to_s_expression() for n in local_score.notes()], address=els18_root_address),
             new_s_cursor,
             self.ds.tree_t_address,
         )
@@ -364,9 +342,9 @@ class HistoryWidget(FocusBehavior, Widget):
 
         if isinstance(node, Atom):
             return BoxNonTerminal([], [no_offset(
-                self._t_for_text(node.atom, self.colors_for_cursor(is_cursor), node.address))])
+                self._t_for_text(node.atom, self.colors_for_cursor(is_cursor), node.address.with_render()))])
 
-        t = self._t_for_text("(", self.colors_for_cursor(is_cursor), node.address + ("open-paren",))
+        t = self._t_for_text("(", self.colors_for_cursor(is_cursor), node.address.with_render("open-paren"))
         offset_terminals = [
             no_offset(t),
         ]
@@ -379,7 +357,7 @@ class HistoryWidget(FocusBehavior, Widget):
             offset_nonterminals.append(OffsetBox((offset_right, offset_down), nt))
             offset_right += nt.outer_dimensions[X]
 
-        t = self._t_for_text(")", self.colors_for_cursor(is_cursor), node.address + ("close-paren",))
+        t = self._t_for_text(")", self.colors_for_cursor(is_cursor), node.address.with_render("close-paren"))
         offset_terminals.append(OffsetBox((offset_right, offset_down), t))
 
         return BoxNonTerminal(offset_nonterminals, offset_terminals)
@@ -403,6 +381,8 @@ class HistoryWidget(FocusBehavior, Widget):
     # ## Section for drawing boxes
     def _t_for_text(self, text, colors, address):
         # Copy/pasta from tree.py (w/ addressing)
+        pmts(address, ELS18RenderingAddress)
+
         fg, bg = colors
         text_texture = self._texture_for_text(text)
         content_height = text_texture.height

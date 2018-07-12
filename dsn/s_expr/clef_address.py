@@ -1,6 +1,6 @@
 """
 This module contains machinery to annotate Notes with a "global address", the path of that note in a with respect to
-some global root note or root score.
+some global root score.
 
 Note: the annotated Notes are defined here with considerable amount of duplication with clef.py, most notably in the
 fact that we define a separate subclass for each note class. Also: in the fact that `to_s_expression` is fully
@@ -17,129 +17,101 @@ from dsn.s_expr.structure import Atom, List
 from utils import pmts
 
 from dsn.s_expr.score import Score
-
-
-# ## Classes for note-addresses
-
-class NoteAddressPart(object):
-    """The global paths are defined as tuples of NoteAddressPart."""
-    pass
-
-
-class TheChild(NoteAddressPart):
-    """For notes which take a single child: this part of the path denotes descending into that child."""
-
-    def __repr__(self):
-        return '>'
-
-    def __eq__(self, other):
-        return isinstance(other, TheChild)
-
-    def __hash__(self):
-        return hash(repr(self))
-
-
-class InScore(NoteAddressPart):
-    """For Scores, the path is denoted by indicating which child in the score we're talking abuot. (by index)"""
-
-    def __init__(self, index):
-        self.index = index
-
-    def __repr__(self):
-        return '@%s' % self.index
-
-    def __eq__(self, other):
-        return isinstance(other, InScore) and self.index == other.index
-
-    def __hash__(self):
-        return hash(self.index)
+from dsn.s_expr.note_address import NoteAddress, TheChild, InScore
 
 
 # ## Classes for GlobNote (which isn't actually a class itself; we simply subclass each note in clef.py separately)
 
 class GlobBecomeAtom(BecomeAtom):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobBecomeAtom, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("become-atom", address=self.address + ("name",)),
-            Atom(self.atom, address=self.address + ("atom",)),
-            ], address=self.address)
+            Atom("become-atom", address=self.address.els18("name")),
+            Atom(self.atom, address=self.address.els18("atom")),
+            ], address=self.address.els18())
 
 
 class GlobSetAtom(SetAtom):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobSetAtom, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("set-atom", address=self.address + ("name",)),
-            Atom(self.atom, address=self.address + ("atom",)),
-            ], address=self.address)
+            Atom("set-atom", address=self.address.els18("name")),
+            Atom(self.atom, address=self.address.els18("atom")),
+            ], address=self.address.els18())
 
 
 class GlobBecomeList(BecomeList):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobBecomeList, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("become-list", address=self.address + ("name",)),
-            ], address=self.address)
+            Atom("become-list", address=self.address.els18("name")),
+            ], address=self.address.els18())
 
 
 class GlobInsert(Insert):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobInsert, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("insert", address=self.address + ("name",)),
-            Atom(str(self.index), address=self.address + ("index",)),
+            Atom("insert", address=self.address.els18("name",)),
+            Atom(str(self.index), address=self.address.els18("index")),
             self.child_note.to_s_expression()
-            ], address=self.address)
+            ], address=self.address.els18())
 
 
 class GlobDelete(Delete):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobDelete, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("delete", address=self.address + ("name",)),
-            Atom(str(self.index), address=self.address + ("index",))
-        ], address=self.address)
+            Atom("delete", address=self.address.els18("name")),
+            Atom(str(self.index), address=self.address.els18("index"))
+        ], address=self.address.els18())
 
 
 class GlobExtend(Extend):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobExtend, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("extend", address=self.address + ("name",)),
-            Atom(str(self.index), address=self.address + ("index",)),
+            Atom("extend", address=self.address.els18("name")),
+            Atom(str(self.index), address=self.address.els18("index")),
             self.child_note.to_s_expression()
-            ], address=self.address)
+            ], address=self.address.els18())
 
 
 class GlobChord(Chord):
     def __init__(self, address, *args):
+        pmts(address, NoteAddress)
         super(GlobChord, self).__init__(*args)
         self.address = address
 
     def to_s_expression(self):
         return List([
-            Atom("chord", address=self.address + ("name",)),
-            List([c.to_s_expression() for c in self.score.notes], address=self.address + ("list",)),
-            ], address=self.address)
+            Atom("chord", address=self.address.els18("name")),
+            List([c.to_s_expression() for c in self.score.notes], address=self.address.els18("list")),
+            ], address=self.address.els18())
 
 
 normal_to_glob = {
@@ -158,17 +130,18 @@ def note_with_global_address(note, at_address):
 
     if isinstance(note, Chord):
         children = [
-            note_with_global_address(child, at_address + (InScore(i),)) for
+            note_with_global_address(child, at_address.plus(InScore(i))) for
             i, child in enumerate(note.score.notes)
         ]
 
         return GlobChord(at_address, ChordScore(children))
 
     elif isinstance(note, Insert) or isinstance(note, Extend):
-        child = note_with_global_address(note.child_note, at_address + (TheChild(),))
+        child = note_with_global_address(note.child_note, at_address.plus(TheChild()))
         return normal_to_glob[type(note)](at_address, note.index, child)
 
-    # further instance-offing below is to account for unequal param-counts and param-names; hackish, I know
+    # further instance-offing below is to account for unequal param-counts and param-names; The point is that to
+    # re-instantiate a Glob* variant, we need to know what params to use.
     elif isinstance(note, SetAtom) or isinstance(note, BecomeAtom):  # one param, named 'atom'
         return normal_to_glob[type(note)](at_address, note.atom)
 
@@ -187,7 +160,7 @@ def score_with_global_address(score):
     pmts(score, Score)
 
     return SimpleScore([
-        note_with_global_address(note, (i,))
+        note_with_global_address(note, NoteAddress((InScore(i),)))
         for i, note in enumerate(score.notes())])
 
 

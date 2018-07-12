@@ -1,0 +1,39 @@
+>>> from dsn.s_expr.note_address import NoteAddress, TheChild, InScore, SExprELS18NoteAddress, ELS18RenderingAddress
+
+>>> item_3_at_root = NoteAddress((InScore(3),)).els18()
+>>> a_child_of_item_2_at_root = NoteAddress((InScore(2), TheChild(),)).els18()
+>>> a_child_of_item_3_at_root = NoteAddress((InScore(3), TheChild(),)).els18()
+>>> index_field_of_item_3_at_root = NoteAddress((InScore(3),)).els18('index')
+
+>>> a_chord_at_4 = NoteAddress((InScore(4),)).els18()
+>>> the_list_of_the_chord = NoteAddress((InScore(4),)).els18('list')
+>>> the_name_of_the_chord = NoteAddress((InScore(4),)).els18('name')
+>>> item_3_in_list = NoteAddress((InScore(4), InScore(3))).els18()
+
+>>> item_3_at_root.is_prefix_of(a_child_of_item_2_at_root)
+False
+
+>>> item_3_at_root.is_prefix_of(a_child_of_item_3_at_root)
+True
+
+>>> item_3_at_root.is_prefix_of(index_field_of_item_3_at_root)
+True
+
+>>> a_chord_at_4.is_prefix_of(the_name_of_the_chord)
+True
+
+>>> a_chord_at_4.is_prefix_of(the_list_of_the_chord)
+True
+
+# Special case: 'list'
+>>> the_list_of_the_chord.is_prefix_of(item_3_in_list)
+True
+
+>>> the_name_of_the_chord.is_prefix_of(item_3_in_list)
+False
+
+>>> the_list_of_the_chord.is_prefix_of(the_name_of_the_chord)
+False
+
+>>> the_name_of_the_chord.is_prefix_of(the_list_of_the_chord)
+False
