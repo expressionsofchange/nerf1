@@ -95,9 +95,16 @@ class NerdAtom(NerdSExpr):
 class NerdList(NerdSExpr):
 
     def __init__(self, children, n2s, s2n, n2t, max_t, is_inserted, is_deleted, score=None):
-        # children are nerd-children, that is they have a type from the present module **and they need not actually be
-        # alive**
+        """
+        children are of type NerdSExpr, which also implies: need not actually be alive.
 
+        We have the following 3 address spaces, and mappings between them:
+
+        * s[pace]: the position of the child in the list of children when deleted children are ignored. That is: the
+            position if the parent would not have been not a NerdSExpr.
+        * n[erd]: the position of the child in self.children, i.e. assigning such numbers to deleted children.
+        * t[ime]: a sequencenumber expressing the order-of-creation
+        """
         self.children = children
 
         self.n2s = n2s
@@ -112,11 +119,15 @@ class NerdList(NerdSExpr):
 
     @classmethod
     def from_s_expr(cls, s_expr):
+        # At creation from a normal s-expression, N and S are the same because no deleted children exist in non-deleted
+        # form: the mapping between them is 1 to 1
+        # Because N = S, we can assign s2t to n2t
+
         return NerdList(
             children        = [NerdSExpr.from_s_expr(child) for child in s_expr.children],
-            n2s             = [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
-            s2n             = [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
-            n2t             = s_expr.s2t,  # EXPLAIN
+            n2s             = [i for i in range(len(s_expr.children))],
+            s2n             = [i for i in range(len(s_expr.children))],
+            n2t             = s_expr.s2t,
             max_t           = len(s_expr.t2s) - 1,  # EXPLAIN
             is_inserted     = False,
             is_deleted      = False,
