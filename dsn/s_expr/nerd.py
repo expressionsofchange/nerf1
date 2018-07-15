@@ -113,27 +113,28 @@ class NerdList(NerdSExpr):
     @classmethod
     def from_s_expr(cls, s_expr):
         return NerdList(
-            [NerdSExpr.from_s_expr(child) for child in s_expr.children],
-            [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
-            [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
-            s_expr.s2t,  # EXPLAIN
-            len(s_expr.t2s) - 1,  # EXPLAIN
-            False,
-            False,
-            s_expr.score)
+            children        = [NerdSExpr.from_s_expr(child) for child in s_expr.children],
+            n2s             = [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
+            s2n             = [i for i in range(len(s_expr.children))],  # 1-to-1 mapping
+            n2t             = s_expr.s2t,  # EXPLAIN
+            max_t           = len(s_expr.t2s) - 1,  # EXPLAIN
+            is_inserted     = False,
+            is_deleted      = False,
+            score           = s_expr.score)
 
     def deleted_version(self):
         return NerdList(
-            self.children,
-            self.n2s,
-            self.s2n,
-            self.n2t,
-            self.max_t,
-            self.is_inserted,
-            True,
+            children        = self.children,
+            n2s             = self.n2s,
+            s2n             = self.s2n,
+            n2t             = self.n2t,
+            max_t           = self.max_t,
+            is_inserted     = self.is_inserted,
+            is_deleted      = True,
+
             # The deleted version has the same score as the non-deleted one: its deletion is external to it, i.e. it
             # happens at the parent level.
-            self.score,
+            score           = self.score,
             )
 
     def __repr__(self):
@@ -141,14 +142,14 @@ class NerdList(NerdSExpr):
 
     def restructure(self, score):
         return NerdList(
-            self.children,
-            self.n2s,
-            self.s2n,
-            self.n2t,
-            self.max_t,
-            self.is_inserted,
-            self.is_deleted,
-            score,
+            children        = self.children,
+            n2s             = self.n2s,
+            s2n             = self.s2n,
+            n2t             = self.n2t,
+            max_t           = self.max_t,
+            is_inserted     = self.is_inserted,
+            is_deleted      = self.is_deleted,
+            score           = score,
             )
 
 
