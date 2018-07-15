@@ -11,10 +11,19 @@
 ...             Delete(1),
 ...             Extend(0, SetAtom('goodbye')), ]))
 
->>> play_note(c, None)
+>>> nerd = play_note(c, None)
+>>> nerd
 +(«None hello»goodbye «None»-there)
+>>> nerd.n2t
+[0, 1]
+>>> nerd.n2s
+[0, None]
+>>> nerd.t2n
+[0, 1]
+>>> nerd.s2n
+[0]
 
->>> play_note(c, None).score
+>>> nerd.score
 ((chord ((become-list) (insert 0 (become-atom hello)) (insert 1 (become-atom there)) (delete 1) (extend 0 (set-atom goodbye)))))
 
 >>> play_score(m, play_note(c, None).score)

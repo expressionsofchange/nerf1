@@ -16,6 +16,7 @@ In the present version we deal with 2 problems at once:
 from nerdspace import sn_become, sn_insert, sn_delete, sn_replace
 from utils import pmts
 from list_operations import l_become, l_insert, l_replace
+from spacetime import st_insert
 
 from dsn.s_expr.structure import SExpr, Atom
 from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord
@@ -94,7 +95,7 @@ class NerdAtom(NerdSExpr):
 
 class NerdList(NerdSExpr):
 
-    def __init__(self, children, n2s, s2n, n2t, max_t, is_inserted, is_deleted, score=None):
+    def __init__(self, children, n2s, s2n, n2t, t2n, is_inserted, is_deleted, score=None):
         """
         children are of type NerdSExpr, which also implies: need not actually be alive.
 
@@ -110,7 +111,7 @@ class NerdList(NerdSExpr):
         self.n2s = n2s
         self.s2n = s2n
         self.n2t = n2t
-        self.max_t = max_t
+        self.t2n = t2n
 
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
@@ -121,14 +122,14 @@ class NerdList(NerdSExpr):
     def from_s_expr(cls, s_expr):
         # At creation from a normal s-expression, N and S are the same because no deleted children exist in non-deleted
         # form: the mapping between them is 1 to 1
-        # Because N = S, we can assign s2t to n2t
+        # Because N = S, we can assign s2t to n2t and t2s to t2n
 
         return NerdList(
             children        = [NerdSExpr.from_s_expr(child) for child in s_expr.children],
             n2s             = [i for i in range(len(s_expr.children))],
             s2n             = [i for i in range(len(s_expr.children))],
             n2t             = s_expr.s2t,
-            max_t           = len(s_expr.t2s) - 1,  # EXPLAIN
+            t2n             = s_expr.t2s,
             is_inserted     = False,
             is_deleted      = False,
             score           = s_expr.score)
@@ -139,7 +140,7 @@ class NerdList(NerdSExpr):
             n2s             = self.n2s,
             s2n             = self.s2n,
             n2t             = self.n2t,
-            max_t           = self.max_t,
+            t2n             = self.t2n,
             is_inserted     = self.is_inserted,
             is_deleted      = True,
 
@@ -157,7 +158,7 @@ class NerdList(NerdSExpr):
             n2s             = self.n2s,
             s2n             = self.s2n,
             n2t             = self.n2t,
-            max_t           = self.max_t,
+            t2n             = self.t2n,
             is_inserted     = self.is_inserted,
             is_deleted      = self.is_deleted,
             score           = score,
@@ -206,7 +207,7 @@ def play_note(note, structure, ScoreClass=Score):
             n2s,
             s2n,
             [],
-            -1,
+            [],
             True,
             False,
             score)
@@ -221,8 +222,7 @@ def play_note(note, structure, ScoreClass=Score):
         child = play_note(note.child_note, None, ScoreClass)
 
         n2s, s2n, index = sn_insert(structure.n2s, structure.s2n, note.index)
-        n2t = l_insert(structure.n2t, index, structure.max_t + 1)
-        max_t = structure.max_t + 1
+        n2t, t2n = st_insert(structure.t2n, structure.n2t, index)
 
         children = l_insert(structure.children, index, child)
 
@@ -231,7 +231,7 @@ def play_note(note, structure, ScoreClass=Score):
             n2s,
             s2n,
             n2t,
-            max_t,
+            t2n,
             structure.is_inserted,
             structure.is_deleted,
             score,
@@ -251,7 +251,7 @@ def play_note(note, structure, ScoreClass=Score):
             n2s,
             s2n,
             structure.n2t,
-            structure.max_t,
+            structure.t2n,
             structure.is_inserted,
             structure.is_deleted,
             score)
@@ -267,7 +267,7 @@ def play_note(note, structure, ScoreClass=Score):
             n2s,
             s2n,
             structure.n2t,
-            structure.max_t,
+            structure.t2n,
             structure.is_inserted,
             structure.is_deleted,
             score)
