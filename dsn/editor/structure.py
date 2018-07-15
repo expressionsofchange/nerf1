@@ -1,5 +1,7 @@
 
 class EditStructure(object):
+    """State object for widgets/tree.py"""
+
     def __init__(self, tree, s_cursor, pp_annotations, pp_tree):
         self.tree = tree
         self.s_cursor = s_cursor
