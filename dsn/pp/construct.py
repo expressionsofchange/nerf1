@@ -35,7 +35,6 @@ def construct_pp_tree(tree, pp_annotations):
         if s_address is None:
             continue  # the node no longer exists
 
-        annotated_node = node_for_s_address(annotated_tree, s_address)
         if isinstance(pp_note, PPUnset):
             new_value = PPNone()
         elif isinstance(pp_note, PPSetSingleLine):
@@ -47,6 +46,7 @@ def construct_pp_tree(tree, pp_annotations):
         else:
             raise Exception("Unknown PP Note")
 
+        annotated_node = node_for_s_address(annotated_tree, s_address)
         # let's just do this mutably first... this is the lazy approach (but that fits with the caveats mentioned at the
         # top of this method)
         annotated_node.annotation = new_value
