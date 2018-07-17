@@ -92,8 +92,10 @@ class InContextDisplay(object):
 
 class ICAtom(InContextDisplay):
 
-    def __init__(self, atom, is_inserted, is_deleted, address=None):
+    def __init__(self, atom, is_inserted, is_deleted, address):
         pmts(atom, str)
+        pmts(address, ICHAddress)
+
         self.atom = atom
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
@@ -105,8 +107,10 @@ class ICAtom(InContextDisplay):
 
 class ICList(InContextDisplay):
 
-    def __init__(self, children, is_inserted, is_deleted, address=None):
+    def __init__(self, children, is_inserted, is_deleted, address):
         pmts(children, list)
+        pmts(address, ICHAddress)
+
         self.children = children
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
@@ -157,6 +161,7 @@ def render_t0(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
 
 def render_most_completely(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
     """ :: NerdSExpr => [InContextDisplay] """
+    pmts(address, ICHAddress)
     context_is_deleted = context_is_deleted or nerd_s_expr.is_deleted
 
     if isinstance(nerd_s_expr, NerdAtom):
