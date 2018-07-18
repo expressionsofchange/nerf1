@@ -64,7 +64,7 @@ def st_replace(prev_t2s, prev_s2t, index):
 
 
 def t_address_for_s_address(node, s_address):
-    t_address = _best_lookup(node, lookup_by_s, (lambda s, t: t), s_address)
+    t_address = _best_lookup(node, lookup_t_by_s, s_address)
     if len(t_address) != len(s_address):
         raise IndexError("s_address out of bounds: %s" % s_address)
 
@@ -80,10 +80,10 @@ def get_s_address_for_t_address(node, t_address):
 
 
 def best_s_address_for_t_address(node, t_address):
-    return _best_lookup(node, lookup_by_t, (lambda s, t: s), t_address)
+    return _best_lookup(node, lookup_s_by_t, t_address)
 
 
-def lookup_by_s(node, s_index):
+def lookup_t_by_s(node, s_index):
     if not (0 <= s_index <= len(node.s2t) - 1):
         return None, None  # Index out of bounds
 
@@ -91,16 +91,16 @@ def lookup_by_s(node, s_index):
     return s_index, t_index
 
 
-def lookup_by_t(node, t_index):
+def lookup_s_by_t(node, t_index):
     if not (0 <= t_index <= len(node.t2s) - 1):
         return None, None  # Index out of bounds
 
     s_index = node.t2s[t_index]
-    return s_index, t_index  # s_index may be None (if it's removed in space)
+    return s_index, s_index  # s_index may be None (if it's removed in space)
 
 
-def _best_lookup(node, do_lookup, collect, lookup_value, _collected=None):
-    """Looks up an x_address (the `lookup_value`) using the function `do_lookup` and collecting using `collect`;
+def _best_lookup(node, do_lookup, lookup_value, _collected=None):
+    """Looks up an x_address (the `lookup_value`) using the function `do_lookup`.
     We return the longest matched prefix that we can find."""
     if _collected is None:
         _collected = []
@@ -108,14 +108,14 @@ def _best_lookup(node, do_lookup, collect, lookup_value, _collected=None):
     if (lookup_value == []) or (not hasattr(node, 'children')):  # Done, or no way to proceed.
         return _collected
 
-    s_index, t_index = do_lookup(node, lookup_value[0])
-    if s_index is None:
+    next_child_index, found_index = do_lookup(node, lookup_value[0])
+    if next_child_index is None:
         return _collected
 
-    _collected += [collect(s_index, t_index)]
+    _collected += [found_index]
 
-    child = node.children[s_index]
-    return _best_lookup(child, do_lookup, collect, lookup_value[1:], _collected)
+    child = node.children[next_child_index]
+    return _best_lookup(child, do_lookup, lookup_value[1:], _collected)
 
 
 def best_stable_s_over_time(tree_0, s_address, tree_1):
