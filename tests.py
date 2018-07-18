@@ -30,6 +30,7 @@ def load_tests(loader, tests, ignore):
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_construct_nerd.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_in_context_display.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/note_address.txt"))
+    tests.addTests(doctest.DocFileSuite("doctests/spacetime.txt"))
 
     return tests
 

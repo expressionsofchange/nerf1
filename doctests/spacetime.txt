@@ -1,0 +1,46 @@
+>>> from dsn.s_expr.structure import Atom, List
+>>> from spacetime import t_address_for_s_address, get_s_address_for_t_address, best_s_address_for_t_address
+
+NOTE: spacetime.py itself also contains some doctests.
+
+We abuse the attribute `score` for tests:
+
+>>> node = List(
+... t2s=[None, None, 0],
+... s2t=[2],
+... score="Only t=2 remains",
+... children=[
+...     List(
+...         t2s=[1, 0],
+...         s2t=[1, 0],
+...         score="2 anti-chronological children",
+...         children=[
+...             Atom("0"),
+...             Atom("1"),
+...         ],
+...     )
+... ],
+... )
+
+>>> t_address_for_s_address(node, [0])
+[2]
+
+>>> t_address_for_s_address(node, [0, 0])
+[2, 1]
+
+>>> t_address_for_s_address(node, [0, 2])
+Traceback (most recent call last):
+...
+IndexError: s_address out of bounds: [0, 2]
+
+
+>>> get_s_address_for_t_address(node, [2])
+[0]
+
+>>> get_s_address_for_t_address(node, [2, 1])
+[0, 0]
+
+>>> get_s_address_for_t_address(node, [2, 1, 3])
+
+>>> best_s_address_for_t_address(node, [2, 1, 3])
+[0, 0]
