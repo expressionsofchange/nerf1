@@ -64,7 +64,7 @@ def st_replace(prev_t2s, prev_s2t, index):
 
 
 def t_address_for_s_address(node, s_address):
-    t_address = _best_lookup(node, lookup_s, (lambda s, t: t), s_address)
+    t_address = _best_lookup(node, lookup_by_s, (lambda s, t: t), s_address)
     if len(t_address) != len(s_address):
         raise IndexError("s_address out of bounds: %s" % s_address)
 
@@ -80,10 +80,10 @@ def get_s_address_for_t_address(node, t_address):
 
 
 def best_s_address_for_t_address(node, t_address):
-    return _best_lookup(node, lookup_t, (lambda s, t: s), t_address)
+    return _best_lookup(node, lookup_by_t, (lambda s, t: s), t_address)
 
 
-def lookup_s(node, s_index):
+def lookup_by_s(node, s_index):
     if not (0 <= s_index <= len(node.s2t) - 1):
         return None, None  # Index out of bounds
 
@@ -91,7 +91,7 @@ def lookup_s(node, s_index):
     return s_index, t_index
 
 
-def lookup_t(node, t_index):
+def lookup_by_t(node, t_index):
     if not (0 <= t_index <= len(node.t2s) - 1):
         return None, None  # Index out of bounds
 
