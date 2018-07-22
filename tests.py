@@ -31,6 +31,7 @@ def load_tests(loader, tests, ignore):
     tests.addTests(doctest.DocFileSuite("doctests/s_expr_in_context_display.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/note_address.txt"))
     tests.addTests(doctest.DocFileSuite("doctests/spacetime.txt"))
+    tests.addTests(doctest.DocFileSuite("doctests/nerd_spacetime.txt"))
 
     return tests
 

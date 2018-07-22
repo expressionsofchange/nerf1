@@ -1,0 +1,46 @@
+>>> from dsn.s_expr.structure import Atom, List
+>>> from dsn.s_expr.nerd import NerdSExpr, get_n_address_for_t_address, best_n_address_for_t_address
+
+All of the below is a (slightly modified) copy/paste from doctests/spacetime.txt
+
+>>> original_node = List(
+... t2s=[None, None, 0],
+... s2t=[2],
+... score="Only t=2 remains",
+... children=[
+...     List(
+...         t2s=[1, 0],
+...         s2t=[1, 0],
+...         score="2 anti-chronological children",
+...         children=[
+...             Atom("0"),
+...             Atom("1"),
+...         ],
+...     )
+... ],
+... )
+
+>>> node = NerdSExpr.from_s_expr(original_node)
+
+>>> _ = """>>> t_address_for_n_address(node, [0])
+... [2]
+...
+... >>> t_address_for_n_address(node, [0, 0])
+... [2, 1]
+...
+... >>> t_address_for_n_address(node, [0, 2])
+... Traceback (most recent call last):
+...
+... IndexError: n_address out of bounds: [0, 2]"""
+
+
+>>> get_n_address_for_t_address(node, [2])
+[0]
+
+>>> get_n_address_for_t_address(node, [2, 1])
+[0, 0]
+
+>>> get_n_address_for_t_address(node, [2, 1, 3])
+
+>>> best_n_address_for_t_address(node, [2, 1, 3])
+[0, 0]

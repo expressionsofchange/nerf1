@@ -21,6 +21,7 @@ from spacetime import st_insert
 from dsn.s_expr.structure import SExpr, Atom
 from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord
 from dsn.s_expr.score import Score
+from spacetime import _best_lookup
 
 
 # ## Utils
@@ -293,3 +294,30 @@ def play_score(m, score):
         m.construct_nerd[score] = tree
 
     return tree
+
+
+# (NERD)SPACETIME STUFF.
+# Copy/pasted from the analogous (non-n) locations elsewhere; factoring out commonalities might come later.
+
+
+def get_n_address_for_t_address(node, t_address):
+    # Copied from spacetime.py's get_s_address_for_t_address; substituting n for s.
+
+    n_address = best_n_address_for_t_address(node, t_address)
+    if len(n_address) != len(t_address):
+        return None
+
+    return n_address
+
+
+def lookup_n_by_t(node, t_index):
+    if not (0 <= t_index <= len(node.t2n) - 1):
+        return None, None  # Index out of bounds
+
+    n_index = node.t2n[t_index]
+    return n_index, n_index  # n is used both for descending into children and as the thing of interest
+
+
+def best_n_address_for_t_address(node, t_address):
+    # Copied from spacetime.py's get_s_address_for_t_address; substituting n for s.
+    return _best_lookup(node, lookup_n_by_t, t_address)
