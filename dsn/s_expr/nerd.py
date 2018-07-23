@@ -114,6 +114,8 @@ class NerdList(NerdSExpr):
         self.n2t = n2t
         self.t2n = t2n
 
+        assert len(n2t) == len(n2s)
+
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
 
@@ -203,15 +205,17 @@ def play_note(note, structure, ScoreClass=Score):
             raise Exception("You can only BecomeList out of nothingness")
 
         n2s, s2n = sn_become()
+
         return NerdList(
-            l_become(),
-            n2s,
-            s2n,
-            [],
-            [],
-            True,
-            False,
-            score)
+            children        = l_become(),
+            n2s             = n2s,
+            s2n             = s2n,
+            n2t             = [],
+            t2n             = [],
+            is_inserted     = True,
+            is_deleted      = False,
+            score           = score
+            )
 
     if not isinstance(structure, NerdList):
         raise Exception("You can only %s on an existing NerdList" % type(note).__name__)
@@ -223,19 +227,19 @@ def play_note(note, structure, ScoreClass=Score):
         child = play_note(note.child_note, None, ScoreClass)
 
         n2s, s2n, index = sn_insert(structure.n2s, structure.s2n, note.index)
-        n2t, t2n = st_insert(structure.t2n, structure.n2t, index)
+        t2n, n2t = st_insert(structure.t2n, structure.n2t, index)
 
         children = l_insert(structure.children, index, child)
 
         return NerdList(
-            children,
-            n2s,
-            s2n,
-            n2t,
-            t2n,
-            structure.is_inserted,
-            structure.is_deleted,
-            score,
+            children        = children,
+            n2s             = n2s,
+            s2n             = s2n,
+            n2t             = n2t,
+            t2n             = t2n,
+            is_inserted     = structure.is_inserted,
+            is_deleted      = structure.is_deleted,
+            score           = score,
             )
 
     if not (0 <= note.index <= len(structure.s2n) - 1):  # For Delete/Extend the check is "inside bounds"
@@ -248,14 +252,15 @@ def play_note(note, structure, ScoreClass=Score):
         children[index] = children[index].deleted_version()
 
         return NerdList(
-            children,
-            n2s,
-            s2n,
-            structure.n2t,
-            structure.t2n,
-            structure.is_inserted,
-            structure.is_deleted,
-            score)
+            children        = children,
+            n2s             = n2s,
+            s2n             = s2n,
+            n2t             = structure.n2t,
+            t2n             = structure.t2n,
+            is_inserted     = structure.is_inserted,
+            is_deleted      = structure.is_deleted,
+            score           = score
+            )
 
     if isinstance(note, Extend):
         n2s, s2n, index = sn_replace(structure.n2s, structure.s2n, note.index)
@@ -264,14 +269,15 @@ def play_note(note, structure, ScoreClass=Score):
         children = l_replace(structure.children, index, child)
 
         return NerdList(
-            children,
-            n2s,
-            s2n,
-            structure.n2t,
-            structure.t2n,
-            structure.is_inserted,
-            structure.is_deleted,
-            score)
+            children        = children,
+            n2s             = n2s,
+            s2n             = s2n,
+            n2t             = structure.n2t,
+            t2n             = structure.t2n,
+            is_inserted     = structure.is_inserted,
+            is_deleted      = structure.is_deleted,
+            score           = score
+            )
 
     raise Exception("Unknown Note")
 
