@@ -79,6 +79,7 @@ class EditorGUI(App):
 
         history_widget = HistoryWidget(
             m=self.m,
+            tree_widget=tree,
             size_hint=(.5, 1),
             )
         horizontal_layout.add_widget(history_widget)

@@ -1,5 +1,6 @@
 from annotated_tree import annotated_node_factory
 from dsn.s_expr.structure import SExpr
+from dsn.s_expr.nerd import NerdSExpr
 
 
 class PPAnnotation(object):
@@ -24,3 +25,4 @@ class PPMultiLineIndented(PPAnnotation):
 
 
 PPAnnotatedSExpr = annotated_node_factory('PPAnnotatedSExpr', SExpr, PPAnnotation)
+PPAnnotatedNerdSExpr = annotated_node_factory('PPAnnotatedNerdSExpr', NerdSExpr, PPAnnotation)

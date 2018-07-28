@@ -77,6 +77,7 @@ class HistoryWidget(FocusBehavior, Widget):
         self._invalidated = False
 
         self.m = kwargs.pop('m')
+        kwargs.pop('tree_widget')  # symmetry w/ ic_history.py, even though unused in history.py
 
         # Not the best name ever, but at least it clearly indicates we're talking about the channel which contains
         # information on "data" changes (as opposed to "cursor" changes)

@@ -10,6 +10,7 @@ from kivy.uix.widget import Widget
 
 from dsn.history.ic_construct import eich_note_play
 from dsn.history.ic_structure import EICHStructure
+from dsn.pp.construct import construct_pp_nerd_tree
 
 from dsn.s_expr.score import Score
 
@@ -67,7 +68,7 @@ from dsn.viewports.clef import (
 
 from dsn.s_expr.construct import play_note as play_note_regularly
 from dsn.s_expr.nerd import NerdSExpr, play_note
-from dsn.s_expr.in_context_display import render_t0  # , render_most_completely
+from dsn.s_expr.in_context_display import annotated_render_t0
 from dsn.s_expr.in_context_display import ICAtom, ICHAddress, InContextDisplay
 from dsn.s_expr.clef import Chord
 from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
@@ -131,6 +132,11 @@ class HistoryWidget(FocusBehavior, Widget):
         self._invalidated = False
 
         self.m = kwargs.pop('m')
+
+        # We use tree_widget to peak at its `pp_annotations` attribute in a flagrant violation of data encapsulation.
+        # The more thorough solution would be to communicate pp notes over a separate channel; such a solution is left
+        # as a todo though.
+        self.tree_widget = kwargs.pop('tree_widget')
 
         # Not the best name ever, but at least it clearly indicates we're talking about the channel which contains
         # information on "data" changes (as opposed to "cursor" changes)
@@ -196,7 +202,8 @@ class HistoryWidget(FocusBehavior, Widget):
             prefix = ICHAddress(_deepest(note_to_render).address, tuple(t_address))
 
             nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
-            renderings = render_t0(nerd_s_expr, address=prefix)
+            annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, self.tree_widget.ds.pp_annotations)
+            renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
 
             # The return type of the render_* functions is a list of InContextDisplay items; the reasons for there to be
             # more or less than a single return value are:
@@ -237,8 +244,8 @@ class HistoryWidget(FocusBehavior, Widget):
             prefix = ICHAddress(_deepest(note_to_render).address, tuple(t_address))
 
             nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
-
-            renderings = render_t0(nerd_s_expr, address=prefix)
+            annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, self.tree_widget.ds.pp_annotations)
+            renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
 
             # comment not copied
             assert len(renderings) > 0, "An error in the human reasoning in the comment above this line (point 1)"

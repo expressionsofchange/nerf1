@@ -27,6 +27,7 @@ By the way: the name InContextDisplay is provisional (it's not very descriptive)
 from utils import pmts
 
 from dsn.s_expr.nerd import NerdSExpr, NerdAtom
+from dsn.pp.structure import PPAnnotatedNerdSExpr
 
 
 def plusminus(is_inserted, is_deleted):
@@ -92,7 +93,7 @@ class InContextDisplay(object):
 
 class ICAtom(InContextDisplay):
 
-    def __init__(self, atom, is_inserted, is_deleted, address):
+    def __init__(self, atom, is_inserted, is_deleted, address, pp_annotation=None):
         pmts(atom, str)
         pmts(address, ICHAddress)
 
@@ -101,13 +102,18 @@ class ICAtom(InContextDisplay):
         self.is_deleted = is_deleted
         self.address = address
 
+        # note: pp_annotation is a field that's set optionally; this is inconsistent with the approach of using some
+        # AnnotatedNode that we use elsewhere. At some point we should choose a single approach (which needs not
+        # necessarily be either of these approaches).
+        self.pp_annotation = pp_annotation
+
     def __repr__(self):
         return plusminus(self.is_inserted, self.is_deleted) + self.atom
 
 
 class ICList(InContextDisplay):
 
-    def __init__(self, children, is_inserted, is_deleted, address):
+    def __init__(self, children, is_inserted, is_deleted, address, pp_annotation=None):
         pmts(children, list)
         pmts(address, ICHAddress)
 
@@ -115,6 +121,8 @@ class ICList(InContextDisplay):
         self.is_inserted = is_inserted
         self.is_deleted = is_deleted
         self.address = address
+
+        self.pp_annotation = pp_annotation
 
     def __repr__(self):
         return plusminus(self.is_inserted, self.is_deleted) + "(" + " ".join(repr(c) for c in self.children) + ")"
@@ -158,6 +166,50 @@ def render_t0(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
         children.extend(render_t0(child, context_is_deleted, address.plus_t(nerd_s_expr.n2t[index])))
 
     return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted, address)]
+
+
+def annotated_render_t0(annotated_nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
+    """ :: NerdSExpr => [InContextDisplay] """
+    pmts(annotated_nerd_s_expr, PPAnnotatedNerdSExpr)
+    nerd_s_expr = annotated_nerd_s_expr.underlying_node
+    pp_annotation = annotated_nerd_s_expr.annotation
+
+    context_is_deleted = context_is_deleted or nerd_s_expr.is_deleted
+
+    if isinstance(nerd_s_expr, NerdAtom):
+        if len(nerd_s_expr.versions) == 0:  # A.K.A. "not is_inserted"
+            return [ICAtom(nerd_s_expr.atom, False, context_is_deleted, address, pp_annotation)]
+
+        # Implied else: is_inserted == True
+        if context_is_deleted:
+            # In `render_t0` we completely hide insertions inside deletions; we show only the situation at t=0, which is
+            # the first version (if any)
+            if nerd_s_expr.versions[0] is None:
+                return []
+
+            # i.e. show the t=0 state as deleted.
+            return [ICAtom(nerd_s_expr.versions[0], False, True, address, pp_annotation)]
+
+        # Implied else: is_inserted == True, is_deleted == False:
+        # show the t=0 state (if any) as deleted, t=n-1 as inserted
+        if nerd_s_expr.versions[0] is None:
+            return [ICAtom(nerd_s_expr.atom, True, False, address, pp_annotation)]
+
+        return (
+            [ICAtom(nerd_s_expr.versions[0], False, True, address.as_icd('original'), pp_annotation)] +
+            [ICAtom(nerd_s_expr.atom, True, False, address.as_icd('final-version'), pp_annotation)]
+            )
+
+    # implied else: NerdList
+    if context_is_deleted and nerd_s_expr.is_inserted:
+        # In `render_t0` we completely hide insertions inside deletions.
+        return []
+
+    children = []
+    for index, child in enumerate(nerd_s_expr.children):
+        children.extend(render_t0(child, context_is_deleted, address.plus_t(nerd_s_expr.n2t[index])))
+
+    return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted, address, pp_annotation)]
 
 
 def render_most_completely(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):

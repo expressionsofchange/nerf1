@@ -22,6 +22,7 @@ from dsn.s_expr.structure import SExpr, Atom
 from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord
 from dsn.s_expr.score import Score
 from spacetime import _best_lookup
+from s_address import node_for_s_address
 
 
 # ## Utils
@@ -327,3 +328,10 @@ def lookup_n_by_t(node, t_index):
 def best_n_address_for_t_address(node, t_address):
     # Copied from spacetime.py's get_s_address_for_t_address; substituting n for s.
     return _best_lookup(node, lookup_n_by_t, t_address)
+
+
+def node_for_n_address(node, n_address):
+    # we "reuse" (abuse) the fact that node_for_s_address for normal nodes corresponds precisely with
+    # node_for_n_address for Nerd nodes. This is because of ducktyping, and the fact that s- and n-addresses
+    # both correspond to "index into children" for the respective kinds of nodes (SExpr and NerdSExpr)
+    return node_for_s_address(node, n_address)
