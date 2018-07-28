@@ -1,4 +1,4 @@
-from utils import pmts
+from utils import pmts, pmts_or_none
 from dsn.s_expr.note_address import SExprELS18NoteAddress
 
 
@@ -15,8 +15,7 @@ class Atom(SExpr):
         self.score = score
 
         # NOTE: `address` is used exclusively when the SExpr is the result of clef_address.py's "GlobNote" to_s_expr()
-        if address is not None:
-            pmts(address, SExprELS18NoteAddress)
+        pmts_or_none(address, SExprELS18NoteAddress)
         self.address = address
 
     def __repr__(self):
@@ -38,8 +37,7 @@ class List(SExpr):
         self.score = score
 
         # NOTE: `address` is used exclusively when the SExpr is the result of clef_address.py's "GlobNote" to_s_expr()
-        if address is not None:
-            pmts(address, SExprELS18NoteAddress)
+        pmts_or_none(address, SExprELS18NoteAddress)
         self.address = address
 
     def __repr__(self):
