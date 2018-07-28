@@ -26,7 +26,7 @@ By the way: the name InContextDisplay is provisional (it's not very descriptive)
 
 from utils import pmts
 
-from dsn.s_expr.nerd import NerdAtom
+from dsn.s_expr.nerd import NerdSExpr, NerdAtom
 
 
 def plusminus(is_inserted, is_deleted):
@@ -122,6 +122,7 @@ class ICList(InContextDisplay):
 
 def render_t0(nerd_s_expr, context_is_deleted=False, address=ICHAddress()):
     """ :: NerdSExpr => [InContextDisplay] """
+    pmts(nerd_s_expr, NerdSExpr)
     context_is_deleted = context_is_deleted or nerd_s_expr.is_deleted
 
     if isinstance(nerd_s_expr, NerdAtom):
