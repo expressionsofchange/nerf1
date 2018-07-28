@@ -20,7 +20,7 @@ class InheritedRenderingInformation(object):
         self.multiline_mode = multiline_mode
 
 
-IriAnnotatedNode = annotated_node_factory("IriAnnotatedNode", SExpr, InheritedRenderingInformation)
+IriAnnotatedSExpr = annotated_node_factory("IriAnnotatedSExpr", SExpr, InheritedRenderingInformation)
 
 
 def construct_iri_top_down(pp_annotated_node, inherited_information):
@@ -64,7 +64,7 @@ def construct_iri_top_down(pp_annotated_node, inherited_information):
 
         annotated_children.append(construct_iri_top_down(child, child_information))
 
-    return IriAnnotatedNode(
+    return IriAnnotatedSExpr(
         underlying_node=pp_annotated_node.underlying_node,
         annotation=my_information,
         children=annotated_children,

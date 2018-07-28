@@ -36,7 +36,7 @@ from dsn.pp.construct import construct_pp_tree
 from dsn.pp.in_context import (
     construct_iri_top_down,
     InheritedRenderingInformation,
-    IriAnnotatedNode,
+    IriAnnotatedSExpr,
     MULTI_LINE_ALIGNED,
     MULTI_LINE_INDENTED,
 )
@@ -922,7 +922,7 @@ class TreeWidget(FocusBehavior, Widget):
         # "Align with index=1, like so:..  (xxx yyy
         #                                       zzz)
 
-        pmts(iri_annotated_node, IriAnnotatedNode)
+        pmts(iri_annotated_node, IriAnnotatedSExpr)
 
         node = iri_annotated_node.underlying_node
 
@@ -973,7 +973,7 @@ class TreeWidget(FocusBehavior, Widget):
         # TODO this is a pure copy/pasta with _nt_for_node_as_multi_line_aligned with alterations; factoring the
         # commonalities out would be the proper course of action here.
 
-        pmts(iri_annotated_node, IriAnnotatedNode)
+        pmts(iri_annotated_node, IriAnnotatedSExpr)
 
         node = iri_annotated_node.underlying_node
 
