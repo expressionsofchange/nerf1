@@ -40,6 +40,14 @@ It is constructed using regular play and is then "copied into Nerdness" using `f
 ((existing))
 >>> initial_nerd_s_expr = NerdSExpr.from_s_expr(initial_s_expr)
 
+### 0. do nothing... should show no changes
+
+>>> render_t0(initial_nerd_s_expr)
+[((existing))]
+
+>>> render_most_completely(initial_nerd_s_expr)
+[((existing))]
+
 ### 1. delete something... should show everything recursively as deleted
 
 >>> n = Delete(0)
