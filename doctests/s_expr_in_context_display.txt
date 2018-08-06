@@ -25,10 +25,10 @@ First test: end-to-end using the same score we use in the other tests
 [+(±hello +goodbye ±there)]
 
 
-## Testing of both rendering functions:
+## Testing of both rendering functions
 
-Given some note (which is acquired using regular play; "copy" (or whatever that was called) TODO what-called
-    * an existing list, which contains an existing atom.
+Test setup: we start with an existing list, which contains an existing atom.
+It is constructed using regular play and is then "copied into Nerdness" using `from_s_expr`.
 
 >>> c = Chord(Score([
 ...             BecomeList(),
