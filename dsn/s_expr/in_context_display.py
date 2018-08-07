@@ -206,8 +206,8 @@ def annotated_render_t0(annotated_nerd_s_expr, context_is_deleted=False, address
         return []
 
     children = []
-    for index, child in enumerate(nerd_s_expr.children):
-        children.extend(render_t0(child, context_is_deleted, address.plus_t(nerd_s_expr.n2t[index])))
+    for index, child in enumerate(annotated_nerd_s_expr.children):
+        children.extend(annotated_render_t0(child, context_is_deleted, address.plus_t(nerd_s_expr.n2t[index])))
 
     return [ICList(children, nerd_s_expr.is_inserted, context_is_deleted, address, pp_annotation)]
 

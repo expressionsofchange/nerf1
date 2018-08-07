@@ -1,0 +1,48 @@
+>>> from memoization import Memoization
+>>> from dsn.s_expr.construct import play_note as play_note_regularly  # as oppossed to N*E*R*D, which is the focus here
+>>> from dsn.s_expr.clef import Note, BecomeAtom, SetAtom, BecomeList, Insert, Delete, Extend, Chord, Score
+>>> from dsn.s_expr.nerd import NerdSExpr, play_note, play_score
+>>> from dsn.s_expr.in_context_display import annotated_render_t0
+>>> from dsn.pp.clef import PPSetSingleLine
+>>> from dsn.pp.construct import construct_pp_nerd_tree
+>>> from annotations import Annotation
+
+
+>>> m = Memoization()
+
+The function `annotated_render_t0` is the result of copy/pasting, and will not
+be tested in full. However, we do want at least an end-to-end tests, and a test
+that ensures our annotations end up where we expect them.
+
+Thus, the present doctest is an abbreviated version of s_expr_in_context_display.txt,
+mirroring "Step 0" there.
+
+>>> pp_annotations = [
+...     Annotation("ignored", PPSetSingleLine([0, 0])),
+... ]
+
+>>> c = Chord(Score([
+...             BecomeList(),
+...             Insert(0, BecomeList()),
+...             Extend(0, Insert(0, BecomeAtom('existing'))),]))
+
+>>> s_expr = play_note_regularly(c, None)
+>>> s_expr
+((existing))
+>>> nerd_s_expr = NerdSExpr.from_s_expr(s_expr)
+>>> annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, pp_annotations)
+
+>>> annotated_nerd_s_expr.annotation
+PPNone
+>>> annotated_nerd_s_expr.children[0].children[0].annotation
+PPSingleLine
+
+>>> render_result = annotated_render_t0(annotated_nerd_s_expr)
+>>> render_result
+[((existing))]
+
+>>> render_result[0].pp_annotation
+PPNone
+
+>>> render_result[0].children[0].children[0].pp_annotation
+PPSingleLine

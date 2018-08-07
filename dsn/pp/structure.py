@@ -4,7 +4,8 @@ from dsn.s_expr.nerd import NerdSExpr
 
 
 class PPAnnotation(object):
-    pass
+    def __repr__(self):
+        return self.__class__.__name__
 
 
 class PPNone(PPAnnotation):
