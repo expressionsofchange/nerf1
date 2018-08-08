@@ -12,6 +12,12 @@ from dsn.history.ic_construct import eich_note_play
 from dsn.history.ic_structure import EICHStructure
 from dsn.pp.construct import construct_pp_nerd_tree
 from dsn.pp.structure import PPSingleLine
+from dsn.pp.in_context import (
+    construct_iri_top_down,
+    InheritedRenderingInformation,
+    IriAnnotatedInContextDisplay,
+    MULTI_LINE_ALIGNED,
+)
 
 from dsn.s_expr.score import Score
 
@@ -104,7 +110,7 @@ def node_cata(alg, node):
     """A twist on cata: somewhat non-canonical because we pass child_results explicitly as a parameter to alg, rather
     than constructing a new node which has the already transformed values at .children.
 
-    Works for any rose-tree which has its children in .children; here used for ICSExpr"""
+    Works for any rose-tree which has its children in .children"""
 
     node_children = node.children if hasattr(node, 'children') else []
 
@@ -473,7 +479,17 @@ class HistoryWidget(FocusBehavior, Widget):
 
         for i, annotated_rendering in enumerate(items):
             algebra = partial(self._nt_for_node_single_line, i)
-            per_step_result = node_cata(algebra, annotated_rendering)
+
+            iri_annotated_node = construct_iri_top_down(
+                annotated_rendering,
+
+                # We start MULTI_LINE_ALIGNED (but if the first PP node is annotated otherwise the result will reflect
+                # that)
+                InheritedRenderingInformation(MULTI_LINE_ALIGNED),
+                IriAnnotatedInContextDisplay,
+            )
+
+            per_step_result = node_cata(algebra, iri_annotated_node)
 
             result.append(OffsetBox((0, offset_y), per_step_result))
 
@@ -481,8 +497,10 @@ class HistoryWidget(FocusBehavior, Widget):
 
         return result
 
-    def _nt_for_node_single_line(self, index_in_items, annotated_rendering, children_nts):
-        node = annotated_rendering.underlying_node
+    def _nt_for_node_single_line(self, index_in_items, iri_annotated_in_context_display, children_nts):
+        pmts(iri_annotated_in_context_display, IriAnnotatedInContextDisplay)
+        node = iri_annotated_in_context_display.underlying_node
+
         is_cursor = index_in_items == self.ds.cursor
 
         if isinstance(node, ICGrouping):

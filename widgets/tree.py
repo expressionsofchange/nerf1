@@ -792,8 +792,9 @@ class TreeWidget(FocusBehavior, Widget):
         iri_annotated_node = construct_iri_top_down(
             pp_annotated_node,
 
-            # We start MULTI_LINE_ALIGNED (but if the first PP node is annotated otherwise the result will reflect that
+            # We start MULTI_LINE_ALIGNED (but if the first PP node is annotated otherwise the result will reflect that)
             InheritedRenderingInformation(MULTI_LINE_ALIGNED),
+            IriAnnotatedSExpr,
         )
 
         if self.vim_ds is not None:

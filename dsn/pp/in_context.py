@@ -1,6 +1,7 @@
 from annotated_tree import annotated_node_factory
 
 from dsn.s_expr.structure import SExpr
+from dsn.s_expr.in_context_display import InContextDisplay
 
 from dsn.pp.structure import PPSingleLine, PPNone, PPMultiLineAligned, PPMultiLineIndented
 
@@ -22,8 +23,13 @@ class InheritedRenderingInformation(object):
 
 IriAnnotatedSExpr = annotated_node_factory("IriAnnotatedSExpr", SExpr, InheritedRenderingInformation)
 
+IriAnnotatedInContextDisplay = annotated_node_factory(
+    "IriAnnotatedInContextDisplay",
+    InContextDisplay,
+    InheritedRenderingInformation)
 
-def construct_iri_top_down(pp_annotated_node, inherited_information):
+
+def construct_iri_top_down(pp_annotated_node, inherited_information, annotated_class):
     """Constructs the InheritedRenderingInformation in a top-down fashion. Note the difference between the PP
     instructions and the InheritedRenderingInformation: the PP instructions must be viewed in the light of their
     ancestors, the InheritedRenderingInformation can be used without such lookups in the tree, and is therefore more
@@ -62,9 +68,9 @@ def construct_iri_top_down(pp_annotated_node, inherited_information):
         else:  # implied: MULTI_LINE_INDENTED
             child_information = InheritedRenderingInformation(MULTI_LINE_INDENTED)
 
-        annotated_children.append(construct_iri_top_down(child, child_information))
+        annotated_children.append(construct_iri_top_down(child, child_information, annotated_class))
 
-    return IriAnnotatedSExpr(
+    return annotated_class(
         underlying_node=pp_annotated_node.underlying_node,
         annotation=my_information,
         children=annotated_children,
