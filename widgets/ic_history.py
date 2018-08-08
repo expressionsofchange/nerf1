@@ -11,6 +11,7 @@ from kivy.uix.widget import Widget
 from dsn.history.ic_construct import eich_note_play
 from dsn.history.ic_structure import EICHStructure
 from dsn.pp.construct import construct_pp_nerd_tree
+from dsn.pp.structure import PPSingleLine
 
 from dsn.s_expr.score import Score
 
@@ -68,7 +69,7 @@ from dsn.viewports.clef import (
 
 from dsn.s_expr.construct import play_note as play_note_regularly
 from dsn.s_expr.nerd import NerdSExpr, play_note
-from dsn.s_expr.in_context_display import annotated_render_t0
+from dsn.s_expr.in_context_display import annotated_render_t0, PPAnnotatedInContextDisplay
 from dsn.s_expr.in_context_display import ICAtom, ICHAddress, InContextDisplay
 from dsn.s_expr.clef import Chord
 from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
@@ -170,9 +171,9 @@ class HistoryWidget(FocusBehavior, Widget):
     def _best_new_cursor(self, prev_cursor, prev_items, new_items, default):
         """Finds a best new cursor given a previous cursor"""
 
-        searchfor = prev_items[prev_cursor].address.note_address
+        searchfor = prev_items[prev_cursor].underlying_node.address.note_address
         for i, item in enumerate(new_items):
-            if item.address.note_address == searchfor:
+            if item.underlying_node.address.note_address == searchfor:
                 return i
 
         return default
@@ -203,7 +204,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
             nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
             annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, self.tree_widget.ds.pp_annotations)
-            renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
+            annotated_renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
 
             # The return type of the render_* functions is a list of InContextDisplay items; the reasons for there to be
             # more or less than a single return value are:
@@ -214,12 +215,17 @@ class HistoryWidget(FocusBehavior, Widget):
             # parent's history)
             # Point 2 does apply: we render atom histories when an atom is clicked. To ensure that a single set-atom is
             # rendered as a single item we group the results from render_t0 into a ICGrouping.
-            assert len(renderings) > 0, "An error in the human reasoning in the comment above this line (point 1)"
+            assert len(annotated_renderings) > 0, (
+                "An error in the human reasoning in the comment above this line (point 1)")
 
-            if len(renderings) > 1:
-                items.append(ICGrouping(renderings, address=prefix))
+            if len(annotated_renderings) > 1:
+                items.append(PPAnnotatedInContextDisplay(
+                    ICGrouping([a.underlying_node for a in annotated_renderings], address=prefix),
+                    annotation=PPSingleLine(),  # TBD whether this is correct
+                    children=annotated_renderings,
+                    ))
             else:
-                items.extend(renderings)
+                items.extend(annotated_renderings)
 
         return items
 
@@ -245,15 +251,20 @@ class HistoryWidget(FocusBehavior, Widget):
 
             nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
             annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, self.tree_widget.ds.pp_annotations)
-            renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
+            annotated_renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
 
             # comment not copied
-            assert len(renderings) > 0, "An error in the human reasoning in the comment above this line (point 1)"
+            assert len(annotated_renderings) > 0, (
+                "An error in the human reasoning in the comment above this line (point 1)")
 
-            if len(renderings) > 1:
-                items.append(ICGrouping(renderings, address=prefix))
+            if len(annotated_renderings) > 1:
+                items.append(PPAnnotatedInContextDisplay(
+                    ICGrouping([a.underlying_node for a in annotated_renderings], address=prefix),
+                    annotation=PPSingleLine(),  # TBD whether this is correct
+                    children=annotated_renderings,
+                    ))
             else:
-                items.extend(renderings)
+                items.extend(annotated_renderings)
 
             s_expr_so_far = play_note_regularly(note_to_render, s_expr_so_far, SimpleScore)
 
@@ -460,9 +471,9 @@ class HistoryWidget(FocusBehavior, Widget):
         result = []
         offset_y = 0
 
-        for i, node in enumerate(items):
+        for i, annotated_rendering in enumerate(items):
             algebra = partial(self._nt_for_node_single_line, i)
-            per_step_result = node_cata(algebra, node)
+            per_step_result = node_cata(algebra, annotated_rendering)
 
             result.append(OffsetBox((0, offset_y), per_step_result))
 
@@ -470,7 +481,8 @@ class HistoryWidget(FocusBehavior, Widget):
 
         return result
 
-    def _nt_for_node_single_line(self, index_in_items, node, children_nts):
+    def _nt_for_node_single_line(self, index_in_items, annotated_rendering, children_nts):
+        node = annotated_rendering.underlying_node
         is_cursor = index_in_items == self.ds.cursor
 
         if isinstance(node, ICGrouping):

@@ -38,11 +38,11 @@ PPNone
 PPSingleLine
 
 >>> render_result = annotated_render_t0(annotated_nerd_s_expr)
->>> render_result
-[((existing))]
+>>> render_result[0].underlying_node
+((existing))
 
->>> render_result[0].pp_annotation
+>>> render_result[0].annotation
 PPNone
 
->>> render_result[0].children[0].children[0].pp_annotation
+>>> render_result[0].children[0].children[0].annotation
 PPSingleLine
