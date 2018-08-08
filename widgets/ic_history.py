@@ -17,6 +17,7 @@ from dsn.pp.in_context import (
     InheritedRenderingInformation,
     IriAnnotatedInContextDisplay,
     MULTI_LINE_ALIGNED,
+    MULTI_LINE_INDENTED,
 )
 
 from dsn.s_expr.score import Score
@@ -478,7 +479,7 @@ class HistoryWidget(FocusBehavior, Widget):
         offset_y = 0
 
         for i, annotated_rendering in enumerate(items):
-            algebra = partial(self._nt_for_node_single_line, i)
+            algebra = partial(self._nt_for_iri, i)
 
             iri_annotated_node = construct_iri_top_down(
                 annotated_rendering,
@@ -493,15 +494,27 @@ class HistoryWidget(FocusBehavior, Widget):
 
             result.append(OffsetBox((0, offset_y), per_step_result))
 
-            offset_y += per_step_result.outer_dimensions[Y]
+            INTER_ITEM_MARGIN = 20
+            offset_y += per_step_result.outer_dimensions[Y] - INTER_ITEM_MARGIN
 
         return result
 
-    def _nt_for_node_single_line(self, index_in_items, iri_annotated_in_context_display, children_nts):
-        pmts(iri_annotated_in_context_display, IriAnnotatedInContextDisplay)
-        node = iri_annotated_in_context_display.underlying_node
+    def _nt_for_iri(self, index_in_items, iri_annotated_node, children_nts):
+        pmts(iri_annotated_node, IriAnnotatedInContextDisplay)
 
         is_cursor = index_in_items == self.ds.cursor
+        if iri_annotated_node.annotation.multiline_mode == MULTI_LINE_ALIGNED:
+            f = self._nt_for_node_as_multi_line_aligned
+        elif iri_annotated_node.annotation.multiline_mode == MULTI_LINE_INDENTED:
+            f = self._nt_for_node_as_multi_line_indented
+        else:  # SINGLE_LINE
+            f = self._nt_for_node_single_line
+
+        return f(iri_annotated_node, children_nts, is_cursor)
+
+    def _nt_for_node_single_line(self, iri_annotated_node, children_nts, is_cursor):
+        pmts(iri_annotated_node, IriAnnotatedInContextDisplay)
+        node = iri_annotated_node.underlying_node
 
         if isinstance(node, ICGrouping):
             offset_nonterminals = []
@@ -543,6 +556,144 @@ class HistoryWidget(FocusBehavior, Widget):
             self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
             node.address.with_render("close-paren")
             )
+        offset_terminals.append(OffsetBox((offset_right, offset_down), t))
+
+        return BoxNonTerminal(offset_nonterminals, offset_terminals)
+
+    def _nt_for_node_as_multi_line_aligned(self, iri_annotated_node, children_nts, is_cursor):
+        # "Align with index=1, like so:..  (xxx yyy
+        #                                       zzz)
+
+        pmts(iri_annotated_node, IriAnnotatedInContextDisplay)
+        node = iri_annotated_node.underlying_node
+
+        if isinstance(node, ICGrouping):
+            offset_nonterminals = []
+            offset_right = 0
+
+            for nt in children_nts:
+                offset_nonterminals.append(OffsetBox((offset_right, 0), nt))
+                offset_right += nt.outer_dimensions[X]
+
+            return BoxNonTerminal(offset_nonterminals, [])
+
+        if isinstance(node, ICAtom):
+            return BoxNonTerminal([], [no_offset(self._t_for_text(
+                node.atom,
+                self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+                node.address))])
+
+        t = self._t_for_text(
+            "(",
+            self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+            node.address.with_render("open-paren")
+            )
+        offset_right = t.outer_dimensions[X]
+        offset_down = 0
+
+        offset_terminals = [
+            no_offset(t),
+        ]
+        offset_nonterminals = []
+
+        if len(children_nts) > 0:
+            nt = children_nts[0]
+
+            offset_nonterminals.append(
+                OffsetBox((offset_right, offset_down), nt)
+            )
+            offset_right += nt.outer_dimensions[X]
+
+            if len(children_nts) > 1:
+                for nt in children_nts[1:]:
+                    offset_nonterminals.append(OffsetBox((offset_right, offset_down), nt))
+                    offset_down += nt.outer_dimensions[Y]
+
+                # get the final drawn item to figure out where to put the closing ")"
+                last_drawn = nt.get_all_terminals()[-1]
+                offset_right += last_drawn.item.outer_dimensions[X] + last_drawn.offset[X]
+
+                # go "one line" back up
+                offset_down -= last_drawn.item.outer_dimensions[Y]
+
+        else:
+            offset_right = t.outer_dimensions[X]
+
+        t = self._t_for_text(
+            ")",
+            self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+            node.address.with_render("close-paren"))
+        offset_terminals.append(OffsetBox((offset_right, offset_down), t))
+
+        return BoxNonTerminal(offset_nonterminals, offset_terminals)
+
+    def _nt_for_node_as_multi_line_indented(self, iri_annotated_node, children_nts, is_cursor):
+        # "Indented with the equivalent of 2 spaces, like so:..  (xxx yyy
+        #                                                           zzz)
+        # TODO this is a pure copy/pasta with _nt_for_node_as_multi_line_aligned with alterations; factoring the
+        # commonalities out would be the proper course of action here.
+
+        pmts(iri_annotated_node, IriAnnotatedInContextDisplay)
+        node = iri_annotated_node.underlying_node
+
+        if isinstance(node, ICGrouping):
+            offset_nonterminals = []
+            offset_right = 0
+
+            for nt in children_nts:
+                offset_nonterminals.append(OffsetBox((offset_right, 0), nt))
+                offset_right += nt.outer_dimensions[X]
+
+            return BoxNonTerminal(offset_nonterminals, [])
+
+        if isinstance(node, ICAtom):
+            return BoxNonTerminal([], [no_offset(self._t_for_text(
+                node.atom,
+                self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+                node.address))])
+
+        t = self._t_for_text(
+            "(",
+            self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+            node.address.with_render("open-paren")
+            )
+        offset_right_i1 = offset_right = t.outer_dimensions[X]
+        offset_right_i2_plus = t.outer_dimensions[X] * 2  # ")  " by approximation
+        offset_down = 0
+
+        offset_terminals = [
+            no_offset(t),
+        ]
+        offset_nonterminals = []
+
+        if len(children_nts) > 0:
+            nt = children_nts[0]
+
+            offset_nonterminals.append(
+                OffsetBox((offset_right_i1, offset_down), nt)
+            )
+
+            if len(children_nts) > 1:
+                offset_down += nt.outer_dimensions[Y]
+
+                for nt in children_nts[1:]:
+                    offset_nonterminals.append(OffsetBox((offset_right_i2_plus, offset_down), nt))
+                    offset_down += nt.outer_dimensions[Y]
+
+                # get the final drawn item to figure out where to put the closing ")"
+                last_drawn = nt.get_all_terminals()[-1]
+                offset_right = offset_right_i2_plus + last_drawn.item.outer_dimensions[X] + last_drawn.offset[X]
+
+                # go "one line" back up
+                offset_down -= last_drawn.item.outer_dimensions[Y]
+
+        else:
+            offset_right = t.outer_dimensions[X]
+
+        t = self._t_for_text(
+            ")",
+            self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
+            node.address.with_render("close-paren"))
         offset_terminals.append(OffsetBox((offset_right, offset_down), t))
 
         return BoxNonTerminal(offset_nonterminals, offset_terminals)
