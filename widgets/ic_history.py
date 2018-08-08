@@ -652,6 +652,9 @@ class HistoryWidget(FocusBehavior, Widget):
                 self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
                 node.address))])
 
+        if len(node.children) < 2:
+            return self._nt_for_node_single_line(iri_annotated_node, children_nts, is_cursor)
+
         t = self._t_for_text(
             "(",
             self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),

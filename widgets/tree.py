@@ -975,12 +975,14 @@ class TreeWidget(FocusBehavior, Widget):
         # commonalities out would be the proper course of action here.
 
         pmts(iri_annotated_node, IriAnnotatedSExpr)
-
         node = iri_annotated_node.underlying_node
 
         if isinstance(node, Atom):
             return BoxNonTerminal([], [no_offset(self._t_for_text(
                 node.atom, self.colors_for_cursor(is_cursor, is_selection)))])
+
+        if len(node.children) < 2:
+            return self._nt_for_node_single_line(iri_annotated_node, children_nts, is_cursor, is_selection)
 
         t = self._t_for_text("(", self.colors_for_cursor(is_cursor, is_selection))
         offset_right_i1 = offset_right = t.outer_dimensions[X]
