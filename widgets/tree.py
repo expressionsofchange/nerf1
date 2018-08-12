@@ -986,7 +986,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         t = self._t_for_text("(", self.colors_for_cursor(is_cursor, is_selection))
         offset_right_i0 = t.outer_dimensions[X]
-        offset_right_i2_plus = t.outer_dimensions[X] * 2  # ")  " by approximation
+        offset_right_i2_plus = t.outer_dimensions[X] * 1.3  # ")  " by approximation
         offset_down = 0
 
         offset_terminals = [
