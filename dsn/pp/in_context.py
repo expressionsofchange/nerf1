@@ -20,6 +20,9 @@ class InheritedRenderingInformation(object):
     def __init__(self, multiline_mode):
         self.multiline_mode = multiline_mode
 
+    def __eq__(self, other):
+        return isinstance(other, InheritedRenderingInformation) and other.multiline_mode == self.multiline_mode
+
 
 IriAnnotatedSExpr = annotated_node_factory("IriAnnotatedSExpr", SExpr, InheritedRenderingInformation)
 
@@ -43,9 +46,8 @@ def construct_iri_top_down(pp_annotated_node, inherited_information, annotated_c
     children = getattr(pp_annotated_node, 'children', [])
     annotated_children = []
 
-    my_information = inherited_information
-
-    if type(pp_annotated_node.annotation) in [PPSingleLine]:
+    if (inherited_information == InheritedRenderingInformation(SINGLE_LINE) or
+            type(pp_annotated_node.annotation) == PPSingleLine):
         my_information = InheritedRenderingInformation(SINGLE_LINE)
 
     elif type(pp_annotated_node.annotation) in [PPMultiLineAligned, PPNone]:  # i.e. this is the default
