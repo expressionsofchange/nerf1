@@ -652,7 +652,7 @@ class HistoryWidget(FocusBehavior, Widget):
                 self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
                 node.address))])
 
-        if len(node.children) < 2:
+        if len(node.children) <= 2:
             return self._nt_for_node_single_line(iri_annotated_node, children_nts, is_cursor)
 
         t = self._t_for_text(
@@ -660,7 +660,8 @@ class HistoryWidget(FocusBehavior, Widget):
             self.colors_for_properties(node.is_inserted, node.is_deleted, is_cursor),
             node.address.with_render("open-paren")
             )
-        offset_right_i1 = offset_right = t.outer_dimensions[X]
+
+        offset_right_i0 = t.outer_dimensions[X]
         offset_right_i2_plus = t.outer_dimensions[X] * 2  # ")  " by approximation
         offset_down = 0
 
@@ -669,29 +670,24 @@ class HistoryWidget(FocusBehavior, Widget):
         ]
         offset_nonterminals = []
 
-        if len(children_nts) > 0:
-            nt = children_nts[0]
+        nt = children_nts[0]
+        offset_nonterminals.append(OffsetBox((offset_right_i0, offset_down), nt))
+        offset_right_i1 = offset_right_i0 + nt.outer_dimensions[X]
 
-            offset_nonterminals.append(
-                OffsetBox((offset_right_i1, offset_down), nt)
-            )
+        nt = children_nts[1]
+        offset_nonterminals.append(OffsetBox((offset_right_i1, offset_down), nt))
+        offset_down += nt.outer_dimensions[Y]
 
-            if len(children_nts) > 1:
-                offset_down += nt.outer_dimensions[Y]
+        for nt in children_nts[2:]:
+            offset_nonterminals.append(OffsetBox((offset_right_i2_plus, offset_down), nt))
+            offset_down += nt.outer_dimensions[Y]
 
-                for nt in children_nts[1:]:
-                    offset_nonterminals.append(OffsetBox((offset_right_i2_plus, offset_down), nt))
-                    offset_down += nt.outer_dimensions[Y]
+        # get the final drawn item to figure out where to put the closing ")"
+        last_drawn = nt.get_all_terminals()[-1]
+        offset_right = offset_right_i2_plus + last_drawn.item.outer_dimensions[X] + last_drawn.offset[X]
 
-                # get the final drawn item to figure out where to put the closing ")"
-                last_drawn = nt.get_all_terminals()[-1]
-                offset_right = offset_right_i2_plus + last_drawn.item.outer_dimensions[X] + last_drawn.offset[X]
-
-                # go "one line" back up
-                offset_down -= last_drawn.item.outer_dimensions[Y]
-
-        else:
-            offset_right = t.outer_dimensions[X]
+        # go "one line" back up
+        offset_down -= last_drawn.item.outer_dimensions[Y]
 
         t = self._t_for_text(
             ")",
