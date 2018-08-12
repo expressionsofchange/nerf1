@@ -210,7 +210,16 @@ class HistoryWidget(FocusBehavior, Widget):
             prefix = ICHAddress(_deepest(note_to_render).address, tuple(t_address))
 
             nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
-            annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, self.tree_widget.ds.pp_annotations)
+
+            # we bring the pp-annotations in the address-space of the tree that's actually being displayed by filtering
+            # on the the first part of the t-address, and dropping it.
+            rewritten_pp_annotations = [
+                type(a)(a.score, type(a.annotation)(a.annotation.t_address[len(t_address):]))
+                for a in self.tree_widget.ds.pp_annotations
+                if a.annotation.t_address[:len(t_address)] == t_address
+                ]
+            annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, rewritten_pp_annotations)
+
             annotated_renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
 
             # The return type of the render_* functions is a list of InContextDisplay items; the reasons for there to be
@@ -257,7 +266,16 @@ class HistoryWidget(FocusBehavior, Widget):
             prefix = ICHAddress(_deepest(note_to_render).address, tuple(t_address))
 
             nerd_s_expr = play_note(note_to_render, initial_nerd_s_expr)
-            annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, self.tree_widget.ds.pp_annotations)
+
+            # we bring the pp-annotations in the address-space of the tree that's actually being displayed by filtering
+            # on the the first part of the t-address, and dropping it.
+            rewritten_pp_annotations = [
+                type(a)(a.score, type(a.annotation)(a.annotation.t_address[len(t_address):]))
+                for a in self.tree_widget.ds.pp_annotations
+                if a.annotation.t_address[:len(t_address)] == t_address
+                ]
+            annotated_nerd_s_expr = construct_pp_nerd_tree(nerd_s_expr, rewritten_pp_annotations)
+
             annotated_renderings = annotated_render_t0(annotated_nerd_s_expr, address=prefix)
 
             # comment not copied
