@@ -17,7 +17,7 @@ from dsn.s_expr.structure import Atom, List
 from utils import pmts
 
 from dsn.s_expr.score import Score
-from dsn.s_expr.note_address import NoteAddress, TheChild, InScore
+from dsn.s_expr.note_address import NoteAddress, TheChild, InScore, SExprELS18NoteAddress
 
 
 # ## Classes for GlobNote (which isn't actually a class itself; we simply subclass each note in clef.py separately)
@@ -30,9 +30,9 @@ class GlobBecomeAtom(BecomeAtom):
 
     def to_s_expression(self):
         return List([
-            Atom("become-atom", address=self.address.els18("name")),
-            Atom(self.atom, address=self.address.els18("atom")),
-            ], address=self.address.els18())
+            Atom("become-atom", address=SExprELS18NoteAddress(self.address, "name")),
+            Atom(self.atom, address=SExprELS18NoteAddress(self.address, "atom")),
+            ], address=SExprELS18NoteAddress(self.address))
 
 
 class GlobSetAtom(SetAtom):
@@ -43,9 +43,9 @@ class GlobSetAtom(SetAtom):
 
     def to_s_expression(self):
         return List([
-            Atom("set-atom", address=self.address.els18("name")),
-            Atom(self.atom, address=self.address.els18("atom")),
-            ], address=self.address.els18())
+            Atom("set-atom", address=SExprELS18NoteAddress(self.address, "name")),
+            Atom(self.atom, address=SExprELS18NoteAddress(self.address, "atom")),
+            ], address=SExprELS18NoteAddress(self.address))
 
 
 class GlobBecomeList(BecomeList):
@@ -56,8 +56,8 @@ class GlobBecomeList(BecomeList):
 
     def to_s_expression(self):
         return List([
-            Atom("become-list", address=self.address.els18("name")),
-            ], address=self.address.els18())
+            Atom("become-list", address=SExprELS18NoteAddress(self.address, "name")),
+            ], address=SExprELS18NoteAddress(self.address))
 
 
 class GlobInsert(Insert):
@@ -68,10 +68,10 @@ class GlobInsert(Insert):
 
     def to_s_expression(self):
         return List([
-            Atom("insert", address=self.address.els18("name",)),
-            Atom(str(self.index), address=self.address.els18("index")),
+            Atom("insert", address=SExprELS18NoteAddress(self.address, "name",)),
+            Atom(str(self.index), address=SExprELS18NoteAddress(self.address, "index")),
             self.child_note.to_s_expression()
-            ], address=self.address.els18())
+            ], address=SExprELS18NoteAddress(self.address))
 
 
 class GlobDelete(Delete):
@@ -82,9 +82,9 @@ class GlobDelete(Delete):
 
     def to_s_expression(self):
         return List([
-            Atom("delete", address=self.address.els18("name")),
-            Atom(str(self.index), address=self.address.els18("index"))
-        ], address=self.address.els18())
+            Atom("delete", address=SExprELS18NoteAddress(self.address, "name")),
+            Atom(str(self.index), address=SExprELS18NoteAddress(self.address, "index"))
+        ], address=SExprELS18NoteAddress(self.address))
 
 
 class GlobExtend(Extend):
@@ -95,10 +95,10 @@ class GlobExtend(Extend):
 
     def to_s_expression(self):
         return List([
-            Atom("extend", address=self.address.els18("name")),
-            Atom(str(self.index), address=self.address.els18("index")),
+            Atom("extend", address=SExprELS18NoteAddress(self.address, "name")),
+            Atom(str(self.index), address=SExprELS18NoteAddress(self.address, "index")),
             self.child_note.to_s_expression()
-            ], address=self.address.els18())
+            ], address=SExprELS18NoteAddress(self.address))
 
 
 class GlobChord(Chord):
@@ -109,9 +109,9 @@ class GlobChord(Chord):
 
     def to_s_expression(self):
         return List([
-            Atom("chord", address=self.address.els18("name")),
-            List([c.to_s_expression() for c in self.score.notes], address=self.address.els18("list")),
-            ], address=self.address.els18())
+            Atom("chord", address=SExprELS18NoteAddress(self.address, "name")),
+            List([c.to_s_expression() for c in self.score.notes], address=SExprELS18NoteAddress(self.address, "list")),
+            ], address=SExprELS18NoteAddress(self.address))
 
 
 normal_to_glob = {

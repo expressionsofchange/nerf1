@@ -29,9 +29,6 @@ class NoteAddress(object):
     def plus(self, part):
         return NoteAddress(self.address + (part,))
 
-    def els18(self, field=None):
-        return SExprELS18NoteAddress(self, field)
-
     def is_prefix_of(self, other):
         return self.address == other.address[:len(self.address)]
 
@@ -75,7 +72,7 @@ class SExprELS18NoteAddress(object):
     so formed s-expression relates to the global address of the represented note, and which part (i.e. field) of the
     represented note it represents, can be expressed using an `SExprELS18NoteAddress`"""
 
-    def __init__(self, note_address, note_field):
+    def __init__(self, note_address, note_field=None):
         self.note_address = note_address
 
         # the note_field may be None, when a given s-expression represents the whole Note.
