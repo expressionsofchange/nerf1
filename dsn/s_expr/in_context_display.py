@@ -27,6 +27,7 @@ By the way: the name InContextDisplay is provisional (it's not very descriptive)
 from utils import pmts
 
 from dsn.s_expr.nerd import NerdSExpr, NerdAtom
+from dsn.s_expr.note_address import NoteAddress
 from dsn.pp.structure import PPAnnotation, PPAnnotatedNerdSExpr
 from annotated_tree import annotated_node_factory
 
@@ -53,7 +54,8 @@ class ICHAddress(object):
     time) in the tree. (further steps in the rendering chain add further details, i.e. icd_specific and render_specific)
     """
 
-    def __init__(self, note_address=(), t_address=(), icd_specific="", render_specific=""):
+    def __init__(self, note_address=NoteAddress(), t_address=(), icd_specific="", render_specific=""):
+        pmts(note_address, NoteAddress)
         self.note_address = note_address
         self.t_address = t_address
         self.icd_specific = icd_specific

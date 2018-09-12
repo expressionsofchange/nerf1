@@ -1,10 +1,16 @@
 # ## Classes for note-addresses
 
+from utils import pmts
+
 
 class NoteAddress(object):
     """(Global) address of a Note, the path of that note in a with respect to some global root score."""
 
-    def __init__(self, address):
+    def __init__(self, address=()):
+        pmts(address, tuple)
+        for part in address:
+            pmts(part, NoteAddressPart)
+
         self.address = address
 
     def __eq__(self, other):
