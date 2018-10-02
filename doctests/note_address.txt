@@ -1,4 +1,43 @@
 >>> from dsn.s_expr.note_address import NoteAddress, TheChild, InScore, SExprELS18NoteAddress, ELS18RenderingAddress
+>>> from dsn.s_expr.clef_address import play_simple_score, score_with_global_address
+>>> from dsn.s_expr.clef import BecomeList, Insert, Extend, Chord, Score as CScore
+>>> from dsn.s_expr.score import Score
+>>>
+>>> from dsn.s_expr.construct import play_note
+>>>
+>>> score = Score.from_list([
+...             BecomeList(),
+...             Chord(CScore([
+...                 Insert(0, BecomeList()),
+...                 Extend(0, Insert(0, BecomeList())),
+...             ])),
+...             ])
+>>>
+>>> score_wga = score_with_global_address(score)
+>>>
+>>> score_wga.notes()[0].address
+(@0)
+>>> score_wga.notes()[1].address
+(@1)
+>>> score_wga.notes()[1].score.notes[0].address
+(@1, @0)
+>>> score_wga.notes()[1].score.notes[1].address
+(@1, @1)
+>>> score_wga.notes()[1].score.notes[1].child_note.address
+(@1, @1, >)
+
+>>> tree_wga = play_simple_score(score_wga)
+
+>>> tree_wga.score.last_note().address
+(@1)
+
+>>> tree_wga.children[0].children[0].score.last_note().address
+(@1, @1, >, >)
+
+
+## SExprELS18NoteAddress
+
+The below tests for SExprELS18NoteAddress are specific to the method `is_prefix_of`.
 
 >>> item_3_at_root = SExprELS18NoteAddress(NoteAddress((InScore(3),)))
 >>> a_child_of_item_2_at_root = SExprELS18NoteAddress(NoteAddress((InScore(2), TheChild(),)))

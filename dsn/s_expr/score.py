@@ -69,6 +69,13 @@ class Score(object):
     def slur(self, note):
         return self.unique(NoteSlur(note, self.__hash), self.__len + 1)
 
+    @classmethod
+    def from_list(cls, l):
+        result = cls.empty()
+        for n in l:
+            result = result.slur(n)
+        return result
+
     def reversed_notes(self):
         return (score.__nout.note for score in self.scores())
 
