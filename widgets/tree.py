@@ -125,6 +125,25 @@ class TreeWidget(FocusBehavior, Widget):
         self.closed = False
 
         self.m = kwargs.pop('m')
+
+        # Note that we are mis-using history_channel somewhat. The idea of "channels" implies that there is a single
+        # channel, that mutiple receivers may tune into, on which messages of a certain single type are being broadcast.
+        # These channels are so constructed that the sender itself does not get its own message back, but all others do.
+        # Here, there are only 2 participants, that we might call a "parent" and a "child"; (we might use such
+        # terminology, because we always construct the actual parent, child pairs in a tree-like structure only)
+        #
+        # In our present configuration, such parent/child pairs are:
+        # * parent: the file (on disk); child: the "main tree".
+        # * parent: the tree in which a new window was created (pressing "n"); child: that new window.
+        #
+        # Because there are only 2 participants in each usage of history-channel, each send message has only one receive
+        # handler that accepts its messages. And that opens up the possibility for a different, non-designed usage of
+        # the channel: one in which the messages sent over the channel by the 2 participants are not of the same type.
+        # This non-designed usage has become the actual usage:
+        # * Down the hierarchy (parent to child) we send scores.
+        # * Up the hierarchy (child to parent) we send individual notes.
+        # Refactoring directions could be: [a] harmonizing the sent messages [b] replacing the channel with simple
+        # send/reive pairs. For now, we leave this note as the caveat.
         self.history_channel = kwargs.pop('history_channel')
 
         super(TreeWidget, self).__init__(**kwargs)
@@ -155,6 +174,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         self.cursor_channel = Channel()
 
+        # See remarks about `history_channel` above
         self.send_to_channel, _ = self.history_channel.connect(self.receive_from_channel, self.channel_closed)
 
         self.bind(pos=self.invalidate)
