@@ -99,7 +99,7 @@ class HistoryWidget(FocusBehavior, Widget):
             ViewportContext(0, 0, 0, 0),
             VRTC(0),
         )
-        self.present_viewport_position, target_viewport_position = 0, 0
+        self.present_viewport_position, self.target_viewport_position = 0, 0
 
         self.present = {}
         self.animation_time_remaining = 0
