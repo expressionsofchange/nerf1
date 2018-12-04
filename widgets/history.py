@@ -233,6 +233,9 @@ class HistoryWidget(FocusBehavior, Widget):
         elif textual_code in ['z']:
             self.z_pressed = True
 
+        elif textual_code in ['f']:  # f for follow
+            self.asdf()
+
         elif textual_code in ['left', 'h']:
             self._handle_eh_note(EHCursorParent())
 

@@ -69,6 +69,17 @@ class EditorGUI(App):
             initialize_history(self.history_channel)
 
     def add_tree_and_stuff(self, history_channel):
+
+        def switch_panes(mode):
+            FOLLOWING = 0
+
+            if mode == FOLLOWING:
+                horizontal_layout.remove_widget(past_view_tree)
+                horizontal_layout.add_widget(tree)
+            else:
+                horizontal_layout.remove_widget(tree)
+                horizontal_layout.add_widget(past_view_tree)
+
         horizontal_layout = BoxLayout(spacing=10, orientation='horizontal')
 
         tree = TreeWidget(
@@ -77,11 +88,23 @@ class EditorGUI(App):
             history_channel=history_channel,
             )
 
+        # the tree that shows the state at some point in time; while not providing editing capabilities. Alternative
+        # names: state_in_past_tree; history_following_tree
+        currently_selected_past_channel = ClosableChannel()
+        past_view_tree = TreeWidget(
+            m=self.m,
+            size_hint=(.5, 1),
+            history_channel=currently_selected_past_channel,
+            )
+
         history_widget = HistoryWidget(
             m=self.m,
             tree_widget=tree,
             size_hint=(.5, 1),
+            state_channel=currently_selected_past_channel,
             )
+        history_widget.switch_editor_panes = switch_panes
+
         horizontal_layout.add_widget(history_widget)
         horizontal_layout.add_widget(tree)
 

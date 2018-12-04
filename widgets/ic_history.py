@@ -88,6 +88,10 @@ PADDING = PADDING + MARGIN
 MARGIN = 0
 
 
+FOLLOWING = 0
+LEADING = 1
+
+
 def _deepest(note):
     """Finds the 'single leaf of the tree' (our notes have either 1 or 0 children); the exception being 'Chord',
     but as it stands Chords are treated as a single (childless) note themselves and returned."""
@@ -146,6 +150,10 @@ class HistoryWidget(FocusBehavior, Widget):
         # as a todo though.
         self.tree_widget = kwargs.pop('tree_widget')
 
+        self.state_channel = kwargs.pop('state_channel')
+        # send-only channel
+        self.send_state, _ = self.state_channel.connect(lambda data: None, lambda: None)
+
         # Not the best name ever, but at least it clearly indicates we're talking about the channel which contains
         # information on "data" changes (as opposed to "cursor" changes)
         self.data_channel = None
@@ -161,6 +169,7 @@ class HistoryWidget(FocusBehavior, Widget):
 
         self.ds = EICHStructure(Score.empty(), [], 0, [], set())
 
+        self.following_or_leading = FOLLOWING
         self.z_pressed = False
         self.viewport_ds = ViewportStructure(
             ViewportContext(0, 0, 0, 0),
@@ -366,6 +375,15 @@ class HistoryWidget(FocusBehavior, Widget):
             new_expanded_chords,
         )
 
+        # TODO: do the below only when in leading mode (but to do so, we need to store the variable local_score as part
+        # of our state)
+        # Implemented as the quickest way to get this to work; without any regards for performance; It's also yet
+        # another piece of evidence that the split over 3 different types of scores is a bad idea. Once we rewrite it,
+        # we might instead take the approach of dropping a number of items from the top of the list, in which case the
+        # number of items to drop is `len - (new_cursor + 1)`
+        score_in_past = Score.from_list(local_score.notes()[:new_cursor + 1])
+        self.send_state(score_in_past)
+
         self._construct_target_box_structure()
         self._update_viewport_for_change(change_source=HERE)
         self.invalidate()
@@ -396,6 +414,9 @@ class HistoryWidget(FocusBehavior, Widget):
 
         elif textual_code in ['z']:
             self.z_pressed = True
+
+        elif textual_code in ['f']:  # f for follow
+            self.switch_following_mode()
 
         elif textual_code in ['up', 'k']:
             self._handle_eich_note(EICHCursorMove(-1))
@@ -816,3 +837,7 @@ class HistoryWidget(FocusBehavior, Widget):
             self._handle_eich_note(EICHCursorSet(clicked_item))
 
         return True
+
+    def switch_following_mode(self):
+        self.following_or_leading = FOLLOWING if self.following_or_leading is LEADING else LEADING
+        self.switch_editor_panes(self.following_or_leading)
