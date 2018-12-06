@@ -33,10 +33,10 @@ IriAnnotatedInContextDisplay = annotated_node_factory(
 
 
 def construct_iri_top_down(pp_annotated_node, inherited_information, annotated_class):
-    """Constructs the InheritedRenderingInformation in a top-down fashion. Note the difference between the PP
-    instructions and the InheritedRenderingInformation: the PP instructions must be viewed in the light of their
-    ancestors, the InheritedRenderingInformation can be used without such lookups in the tree, and is therefore more
-    easily used. Of course, we must construct it first, which is what we do in the present function.
+    """Constructs the InheritedRenderingInformation in a top-down fashion. Note the difference between the pp
+    annotations (`pp_annotated_node.annotation`) and the InheritedRenderingInformation: the former must be viewed in the
+    light of their ancestors, the latter can be used without such lookups in the tree, and is therefore more easily
+    used. Of course, we must construct it first, which is what we do in the present function.
     """
 
     # I attempted to write this more generally, as a generic map-over-trees function and a function that operates on a
