@@ -91,7 +91,8 @@ class NerdAtom(NerdSExpr):
     def deleted_version(self):
         return NerdAtom(self.atom, self.versions, True, self.score)
 
-    def restructure(self, score):
+    def rescore(self, score):
+        """Return self, with a different score"""
         return NerdAtom(self.atom, self.versions, self.is_deleted, score)
 
 
@@ -156,7 +157,8 @@ class NerdList(NerdSExpr):
     def __repr__(self):
         return plusminus(self.is_inserted, self.is_deleted) + "(" + " ".join(repr(c) for c in self.children) + ")"
 
-    def restructure(self, score):
+    def rescore(self, score):
+        """Return self, with a different score"""
         return NerdList(
             children        = self.children,
             n2s             = self.n2s,
@@ -187,7 +189,7 @@ def play_note(note, structure, ScoreClass=Score):
     if isinstance(note, Chord):
         for score_note in note.score.notes:
             structure = play_note(score_note, structure, ScoreClass)
-        return structure.restructure(score)
+        return structure.rescore(score)
 
     if isinstance(note, BecomeAtom):
         if structure is not None:

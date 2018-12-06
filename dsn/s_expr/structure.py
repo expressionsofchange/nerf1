@@ -21,7 +21,8 @@ class Atom(SExpr):
     def __repr__(self):
         return pp_flat(self)
 
-    def restructure(self, score):
+    def rescore(self, score):
+        """Return self, with a different score"""
         return Atom(self.atom, score)
 
 
@@ -43,7 +44,8 @@ class List(SExpr):
     def __repr__(self):
         return pp_flat(self)
 
-    def restructure(self, score):
+    def rescore(self, score):
+        """Return self, with a different score"""
         return List(self.children, self.t2s, self.s2t, score)
 
 

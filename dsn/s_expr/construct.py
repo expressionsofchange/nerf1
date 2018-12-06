@@ -24,7 +24,11 @@ def play_note(note, structure, ScoreClass=Score):
     if isinstance(note, Chord):
         for score_note in note.score.notes:
             structure = play_note(score_note, structure, ScoreClass=ScoreClass)
-        return structure.restructure(score)
+
+        # When constructing the result of playing a Chord by consecutively playing the notes in the Chord, we get the
+        # correct s_expr back; it has however been annotated by a score that consists of the individual notes rather
+        # than the Chord. We return a version with the Chord-based version instead by calling `rescore`.
+        return structure.rescore(score)
 
     if isinstance(note, BecomeAtom):
         if structure is not None:
