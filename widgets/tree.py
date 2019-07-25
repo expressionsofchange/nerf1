@@ -64,7 +64,10 @@ from widgets.utils import (
     OffsetBox,
     X,
     Y,
+    flatten_nt_to_dict,
 )
+
+from widgets.animate import animate, animate_scalar
 
 from widgets.layout_constants import (
     get_font_size,
@@ -97,6 +100,8 @@ from dsn.viewports.clef import (
 from dsn.selection.clef import AttachDetach, SwitchToOtherEnd, ClearSelection, SelectionContextChange
 from dsn.selection.construct import selection_note_play
 from dsn.selection.structure import Selection
+
+ANIMATION_LENGTH = .5  # Seconds
 
 # TSTTCPW for keeping track of the state of our single-line 'vim editor'
 VimDS = namedtuple('VimDS', (
@@ -177,6 +182,10 @@ class TreeWidget(FocusBehavior, Widget):
         # See remarks about `history_channel` above
         self.send_to_channel, _ = self.history_channel.connect(self.receive_from_channel, self.channel_closed)
 
+        self.present = {}
+        self.animation_time_remaining = 0
+
+        Clock.schedule_interval(self.tick, 1 / 60)
         self.bind(pos=self.invalidate)
         self.bind(size=self.size_change)
         self.bind(focus=self.on_focus_change)
@@ -195,7 +204,7 @@ class TreeWidget(FocusBehavior, Widget):
 
     def channel_closed(self):
         self.closed = True
-        self._construct_box_structure()
+        self._construct_target_box_structure()
         self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
@@ -231,7 +240,7 @@ class TreeWidget(FocusBehavior, Widget):
         # Selection changes may affect the main structure (i.e. if the selection changes the cursor_position). This
         # information flows back into the main structure here (which is also why change_source=HERE)
         self.ds = self.selection_ds.context
-        self._construct_box_structure()
+        self._construct_target_box_structure()
 
         self._update_viewport_for_change(change_source=HERE)
         self.invalidate()
@@ -256,7 +265,7 @@ class TreeWidget(FocusBehavior, Widget):
         )
 
         self._update_selection_ds_for_main_ds()
-        self._construct_box_structure()
+        self._construct_target_box_structure()
         self._update_viewport_for_change(change_source=change_source)
         self.invalidate()
 
@@ -345,7 +354,7 @@ class TreeWidget(FocusBehavior, Widget):
             elif self.vim_ds.vim.done == DONE_CANCEL:
                 self.vim_ds = None
 
-            self._construct_box_structure()
+            self._construct_target_box_structure()
             self._update_viewport_for_change(change_source=HERE)
             self.invalidate()
             return
@@ -524,7 +533,7 @@ class TreeWidget(FocusBehavior, Widget):
         )
 
         self._update_selection_ds_for_main_ds()
-        self._construct_box_structure()
+        self._construct_target_box_structure()
 
         # change_source=ELSEWHERE: this matches with the desirable behavior: you want the cursor to stay in place, and
         # revolve the layout-changes around it.
@@ -612,9 +621,7 @@ class TreeWidget(FocusBehavior, Widget):
         new_widget.report_new_tree_to_app = self.report_new_tree_to_app
 
     def invalidate(self, *args):
-        if not self._invalidated:
-            Clock.schedule_once(self.refresh, -1)
-            self._invalidated = True
+        self._invalidated = True
 
     def _update_viewport_for_change(self, change_source):
         cursor_position, cursor_size = cursor_dimensions(self.box_structure, self.ds.s_cursor)
@@ -637,11 +644,28 @@ class TreeWidget(FocusBehavior, Widget):
         self._update_viewport_for_change(change_source=ELSEWHERE)
         self.invalidate()
 
-    def _construct_box_structure(self):
-        self.box_structure = annotate_boxes_with_s_addresses(self._nts_for_pp_annotated_node(self.ds.pp_tree), [])
+    def _construct_target_box_structure(self):
+        # WORRY: THE called method is plural; but we assign to a singular
+        root_nt = self._nts_for_pp_annotated_node(self.ds.pp_tree)
 
-    def refresh(self, *args):
-        """refresh means: redraw (I suppose we could rename, but I believe it's "canonical Kivy" to use 'refresh')"""
+        self.target_box_structure = annotate_boxes_with_s_addresses(root_nt, [])
+
+        self.target = flatten_nt_to_dict(root_nt, (0, 0))
+        self.animation_time_remaining = ANIMATION_LENGTH
+
+    def tick(self, dt):
+        if self.animation_time_remaining > 0:
+            self.present = animate(dt / self.animation_time_remaining, self.present, self.target)
+            self.present_viewport_position = animate_scalar(
+                dt / self.animation_time_remaining, self.present_viewport_position, self.target_viewport_position)
+
+            self.animation_time_remaining = self.animation_time_remaining - dt
+            self._invalidated = True
+
+        if not self._invalidated:  # either b/c animation, or explicitly
+            return
+
+        # Actually draw
         self.canvas.clear()
 
         with self.canvas:
@@ -655,7 +679,7 @@ class TreeWidget(FocusBehavior, Widget):
         self.offset = (self.pos[X], self.pos[Y] + self.size[Y] + self.viewport_ds.get_position())
 
         with apply_offset(self.canvas, self.offset):
-            self._render_box(self.box_structure.underlying_node)
+            self._render_box(BoxNonTerminal([], list(self.present.values())))
 
         self._invalidated = False
 
@@ -692,14 +716,14 @@ class TreeWidget(FocusBehavior, Widget):
         if not isinstance(cursor_node, List):
             # edit this text node
             self.vim_ds = VimDS("R", self.ds.s_cursor, Vim(cursor_node.atom, 0))
-            self._construct_box_structure()
+            self._construct_target_box_structure()
             self.invalidate()
             return
 
         # create a child node, and edit that
         index = len(cursor_node.children)
         self.vim_ds = VimDS("I", self.ds.s_cursor + [index], Vim("", 0))
-        self._construct_box_structure()
+        self._construct_target_box_structure()
         self.invalidate()
 
     def _add_sibbling_text(self, direction):
@@ -708,7 +732,7 @@ class TreeWidget(FocusBehavior, Widget):
 
         # because direction is in [0, 1]... no need to minimize/maximize (PROVE!)
         self.vim_ds = VimDS("I", self.ds.s_cursor[:-1] + [self.ds.s_cursor[-1] + direction], Vim("", 0))
-        self._construct_box_structure()
+        self._construct_target_box_structure()
         self.invalidate()
 
     # ## Section for drawing boxes
@@ -806,7 +830,7 @@ class TreeWidget(FocusBehavior, Widget):
         if is_selection:
             return WHITE, LAUREL_GREEN
 
-        return BLACK, WHITE
+        return BLACK, None
 
     def _nts_for_pp_annotated_node(self, pp_annotated_node):
         iri_annotated_node = construct_iri_top_down(

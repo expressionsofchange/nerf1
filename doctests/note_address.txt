@@ -3,8 +3,6 @@
 >>> from dsn.s_expr.clef import BecomeList, Insert, Extend, Chord, Score as CScore
 >>> from dsn.s_expr.score import Score
 >>>
->>> from dsn.s_expr.construct import play_note
->>>
 >>> score = Score.from_list([
 ...             BecomeList(),
 ...             Chord(CScore([

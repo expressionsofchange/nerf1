@@ -56,10 +56,16 @@ def play_note(note, structure, ScoreClass=Score):
         if not (0 <= note.index <= len(structure.children)):  # insert _at_ len(..) is ok (a.k.a. append)
             raise Exception("Out of bounds: %s" % note.index)
 
+        t2s, s2t = st_insert(structure.t2s, structure.s2t, note.index)
+        # At this point we know: the new child will live at our following t-index:
+        # `len(t2s) - 1`
+
+        # If we're changing note-construction in the butchering style, we might consider here: inserting the current
+        # t-index information as part of the `play_note` call.
+
         child = play_note(note.child_note, None, ScoreClass=ScoreClass)
         children = l_insert(structure.children, note.index, child)
 
-        t2s, s2t = st_insert(structure.t2s, structure.s2t, note.index)
         return List(children, t2s, s2t, score)
 
     if not (0 <= note.index <= len(structure.children) - 1):  # For Delete/Extend the check is "inside bounds"
